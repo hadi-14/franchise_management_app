@@ -8,7 +8,7 @@ import '../Common/user_state.dart';
 class ProductsPage extends StatefulWidget {
   final String franchiseID;
 
-  const ProductsPage({Key? key, required this.franchiseID}) : super(key: key);
+  const ProductsPage({super.key, required this.franchiseID});
 
   @override
   _ProductsPageState createState() => _ProductsPageState();
@@ -115,7 +115,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Text('No categories available.');
                 } else {
-                  return Container(
+                  return SizedBox(
                     width: MediaQuery.of(context).size.width,
                     child: DropdownButton<String>(
                       borderRadius: BorderRadius.circular(12.0),
@@ -273,7 +273,7 @@ class _ProductsPageState extends State<ProductsPage> {
 class ProductDetailsPage extends StatefulWidget {
   final DocumentSnapshot? productDoc;
 
-  const ProductDetailsPage({Key? key, this.productDoc}) : super(key: key);
+  const ProductDetailsPage({super.key, this.productDoc});
 
   @override
   _ProductDetailsPageState createState() => _ProductDetailsPageState();
@@ -357,7 +357,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Text('No categories available.');
                   } else {
-                    return Container(
+                    return SizedBox(
                       width: MediaQuery.of(context).size.width,
                       child: DropdownButton<String>(
                         borderRadius: BorderRadius.circular(12.0),

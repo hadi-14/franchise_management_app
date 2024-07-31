@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../../Common/flutter_flow_theme.dart';
+import '../Common/user_state.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -30,27 +32,30 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _fetchDashboardData() async {
     final user = _auth.currentUser;
-    if (user != null) {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (user != null && franchiseID.isNotEmpty) {
       final outOfStockSnapshot = await _firestore
           .collection('product')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .where('stock', isEqualTo: 0)
           .get();
       final pendingOrdersSnapshot = await _firestore
           .collection('purchase')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .where('state', isEqualTo: 'Pending')
           .get();
       final storesSnapshot = await _firestore
           .collection('store')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .get();
       final franchiseesSnapshot = await _firestore
           .collection('franchise')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .get();
 
@@ -116,8 +121,8 @@ class _DashboardPageState extends State<DashboardPage> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              Text(count, style: theme.headlineMedium?.copyWith(color: Colors.white)),
-              Text(title, style: theme.bodyMedium?.copyWith(color: Colors.white)),
+              Text(count, style: theme.headlineMedium.copyWith(color: Colors.white)),
+              Text(title, style: theme.bodyMedium.copyWith(color: Colors.white)),
             ],
           ),
         ),

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:paged_datatable/paged_datatable.dart';
+import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
+import '../Common/user_state.dart';
 import 'add_purchase_order_page.dart';
 import 'purchase_order_details_page.dart';
 
@@ -17,8 +19,7 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot>
-      _pagedDataTableController = PagedDataTableController();
+  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
 
   @override
   void initState() {
@@ -30,43 +31,28 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
     _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchPurchaseOrders(
-      int pageSize,
-      SortModel? sortModel,
-      FilterModel filterModel,
-      String? pageToken) async {
-    final user = _auth.currentUser!;
-    Query query = _firestore
-        .collection('purchase')
-        .doc(user.uid)
-        .collection('list');
+  Future<(List<DocumentSnapshot>, String?)> _fetchPurchaseOrders(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken, String franchiseID) async {
+    Query query = _firestore.collection('purchase').doc(franchiseID).collection('list');
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
           .where('OrderID', isGreaterThanOrEqualTo: _searchController.text)
-          .where('OrderID',
-              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+          .where('OrderID', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
     // Apply pagination
     if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore
-          .collection('purchase')
-          .doc(user.uid)
-          .collection('list')
-          .doc(pageToken)
-          .get());
+      query = query.startAfterDocument(await _firestore.collection('purchase').doc(franchiseID).collection('list').doc(pageToken).get());
     }
 
     final snapshot = await query.limit(pageSize).get();
-    final nextPageToken =
-        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
+    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
 
     return (snapshot.docs, nextPageToken);
   }
 
-  Future<void> _deletePurchaseOrder(BuildContext context, String id) async {
+  Future<void> _deletePurchaseOrder(BuildContext context, String id, String franchiseID) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -86,15 +72,8 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
     );
 
     if (confirmed == true) {
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore
-            .collection('purchase')
-            .doc(user.uid)
-            .collection('list')
-            .doc(id)
-            .delete();
-
+      if (franchiseID.isNotEmpty) {
+        await _firestore.collection('purchase').doc(franchiseID).collection('list').doc(id).delete();
         _pagedDataTableController.refresh(); // Refresh the table after deletion
       }
     }
@@ -103,6 +82,7 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+    final userState = Provider.of<UserState>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -141,7 +121,7 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                   width: MediaQuery.of(context).size.width * .75,
                   child: PagedDataTable<String, DocumentSnapshot>(
                     controller: _pagedDataTableController,
-                    fetcher: _fetchPurchaseOrders,
+                    fetcher: (pageSize, sortModel, filterModel, pageToken) => _fetchPurchaseOrders(pageSize, sortModel, filterModel, pageToken, userState.franchiseID),
                     columns: [
                       TableColumn(
                         title: const Text("OrderID"),
@@ -158,22 +138,15 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                         cellBuilder: (context, item, index) {
                           final data = item.data() as Map<String, dynamic>;
                           return FutureBuilder<DocumentSnapshot>(
-                            future: _firestore
-                                .collection('store')
-                                .doc(_auth.currentUser!.uid)
-                                .collection('list')
-                                .doc(data['StoreID'])
-                                .get(),
+                            future: _firestore.collection('store').doc(_auth.currentUser!.uid).collection('list').doc(data['StoreID']).get(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
                                 return const Text('Loading...');
                               }
                               if (snapshot.hasError) {
                                 return const Text('Error');
                               }
-                              final storeData =
-                                  snapshot.data?.data() as Map<String, dynamic>?;
+                              final storeData = snapshot.data?.data() as Map<String, dynamic>?;
                               return Text(storeData?['Name'] ?? 'Unknown');
                             },
                           );
@@ -213,16 +186,14 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => AddPurchaseOrderPage(
-                                        purchaseOrderId: item.id,
-                                      ),
+                                      builder: (context) => AddPurchaseOrderPage(purchaseOrderId: item.id),
                                     ),
                                   );
                                 },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
-                                onPressed: () => _deletePurchaseOrder(context, item.id),
+                                onPressed: () => _deletePurchaseOrder(context, item.id, userState.franchiseID),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.print_rounded),
@@ -230,9 +201,7 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => PurchaseOrderDetailsPage(
-                                        orderId: item.id,
-                                      ),
+                                      builder: (context) => PurchaseOrderDetailsPage(orderId: item.id),
                                     ),
                                   );
                                 },

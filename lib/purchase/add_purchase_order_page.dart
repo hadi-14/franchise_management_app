@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 class AddPurchaseOrderPage extends StatefulWidget {
   final String? purchaseOrderId;
-  const AddPurchaseOrderPage({Key? key, this.purchaseOrderId}) : super(key: key);
+  const AddPurchaseOrderPage({super.key, this.purchaseOrderId});
 
   @override
   _AddPurchaseOrderPageState createState() => _AddPurchaseOrderPageState();

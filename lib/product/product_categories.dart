@@ -6,7 +6,7 @@ import '../Common/flutter_flow_theme.dart';
 class CategoriesPage extends StatefulWidget {
   final String franchiseID;
 
-  const CategoriesPage({Key? key, required this.franchiseID}) : super(key: key);
+  const CategoriesPage({super.key, required this.franchiseID});
 
   @override
   _CategoriesPageState createState() => _CategoriesPageState();
@@ -18,7 +18,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
   final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
 
   final TextEditingController _nameController = TextEditingController();
-  Set<String> _selectedCategories = Set<String>();
+  final Set<String> _selectedCategories = <String>{};
 
   @override
   void initState() {

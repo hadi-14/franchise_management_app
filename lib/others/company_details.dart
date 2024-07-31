@@ -6,7 +6,9 @@ import '../../Common/flutter_flow_theme.dart';
 import '../main.dart';
 
 class CompanyDetailsPage extends StatefulWidget {
-  const CompanyDetailsPage({super.key});
+  final String franchiseID;
+
+  const CompanyDetailsPage({super.key, required this.franchiseID});
 
   @override
   _CompanyDetailsPageState createState() => _CompanyDetailsPageState();
@@ -35,8 +37,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   Future<void> _loadCompanyDetails() async {
     final user = _auth.currentUser;
     if (user != null) {
-      final docSnapshot =
-          await _firestore.collection('user').doc(user.uid).get();
+      final docSnapshot = await _firestore.collection('user').doc(user.uid).get();
       final data = docSnapshot.data();
       if (data != null) {
         _companyNameController.text = data['Company'] ?? '';
@@ -71,9 +72,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         verificationCompleted: (PhoneAuthCredential credential) async {
           await _auth.currentUser?.updatePhoneNumber(credential);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content:
-                    Text('Phone number automatically verified and updated')),
+            const SnackBar(content: Text('Phone number automatically verified and updated')),
           );
         },
         verificationFailed: (FirebaseAuthException e) {
@@ -134,7 +133,6 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   }
 
   Future<void> _inviteUser() async {
-      final user = _auth.currentUser;
     final inviteEmail = _inviteEmailController.text.trim();
     if (inviteEmail.isNotEmpty) {
       try {
@@ -150,14 +148,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           email: inviteEmail,
           password: randomPassword,
         );
-        final docSnapshot =
-            await _firestore.collection('user').doc(user!.uid).get();
-        final data = docSnapshot.data();
-        
+
         // Set user role and franchise ID in Firestore
         await _firestore.collection('user').doc(userCredential.user?.uid).set({
           'role': 'staff',
-          'franchiseId': data!['franchiseId'], // Replace with actual franchise ID
+          'franchiseId': widget.franchiseID,
         });
 
         await _auth.sendPasswordResetEmail(email: inviteEmail);
@@ -231,11 +226,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 child: const Text('Verify Phone Number'),
               ),
               if (_verificationId != null) ...[
-                _buildTextField(
-                    'SMS Code', _smsCodeController, theme, isNumeric: true),
+                _buildTextField('SMS Code', _smsCodeController, theme, isNumeric: true),
                 ElevatedButton(
-                  onPressed: () =>
-                      _updatePhoneNumber(_smsCodeController.text.trim()),
+                  onPressed: () => _updatePhoneNumber(_smsCodeController.text.trim()),
                   child: const Text('Update Phone Number'),
                 ),
               ],
@@ -268,9 +261,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      FlutterFlowTheme theme,
-      {bool isNumeric = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, FlutterFlowTheme theme, {bool isNumeric = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(

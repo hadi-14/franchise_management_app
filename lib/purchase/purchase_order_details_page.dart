@@ -6,7 +6,7 @@ import '../Common/flutter_flow_theme.dart';
 class PurchaseOrderDetailsPage extends StatelessWidget {
   final String orderId;
 
-  const PurchaseOrderDetailsPage({Key? key, required this.orderId}) : super(key: key);
+  const PurchaseOrderDetailsPage({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context) {

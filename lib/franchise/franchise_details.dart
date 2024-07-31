@@ -5,7 +5,9 @@ import 'package:paged_datatable/paged_datatable.dart';
 import '../Common/flutter_flow_theme.dart';
 
 class FranchisePage extends StatefulWidget {
-  const FranchisePage({super.key});
+  final String franchiseID;
+
+  const FranchisePage({super.key, required this.franchiseID});
 
   @override
   _FranchisePageState createState() => _FranchisePageState();
@@ -15,8 +17,7 @@ class _FranchisePageState extends State<FranchisePage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot>
-      _pagedDataTableController = PagedDataTableController();
+  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -37,40 +38,23 @@ class _FranchisePageState extends State<FranchisePage> {
     _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchFranchises(int pageSize,
-      SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
-    final user = _auth.currentUser!;
-    Query query =
-        _firestore.collection('franchise').doc(user.uid).collection('list');
+  Future<(List<DocumentSnapshot>, String?)> _fetchFranchises(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
+    Query query = _firestore.collection('franchise').doc(widget.franchiseID).collection('list');
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
           .where('Name', isGreaterThanOrEqualTo: _searchController.text)
-          .where('Name',
-              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
-    }
-
-    // Apply sorting
-    if (sortModel != null) {
-      // for (final sortColumn in sortModel.columns) {
-      // query = query.orderBy(SortModel.fieldName, descending: SortModel.descending);
-      // }
+          .where('Name', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
     // Apply pagination
     if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore
-          .collection('franchise')
-          .doc(user.uid)
-          .collection('list')
-          .doc(pageToken)
-          .get());
+      query = query.startAfterDocument(await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').doc(pageToken).get());
     }
 
     final snapshot = await query.limit(pageSize).get();
-    final nextPageToken =
-        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
+    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
 
     return (snapshot.docs, nextPageToken);
   }
@@ -79,11 +63,7 @@ class _FranchisePageState extends State<FranchisePage> {
     final user = _auth.currentUser;
     if (user != null) {
       final franchiseID = await _getNextFranchiseID(user.uid);
-      await _firestore
-          .collection('franchise')
-          .doc(user.uid)
-          .collection('list')
-          .add({
+      await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').add({
         'FranchiseID': franchiseID,
         'Name': _nameController.text,
         'Email': _emailController.text,
@@ -101,13 +81,7 @@ class _FranchisePageState extends State<FranchisePage> {
   }
 
   Future<String> _getNextFranchiseID(String userId) async {
-    final snapshot = await _firestore
-        .collection('franchise')
-        .doc(userId)
-        .collection('list')
-        .orderBy('FranchiseID', descending: true)
-        .limit(1)
-        .get();
+    final snapshot = await _firestore.collection('franchise').doc(userId).collection('list').orderBy('FranchiseID', descending: true).limit(1).get();
     if (snapshot.docs.isNotEmpty) {
       final lastID = int.parse(snapshot.docs.first['FranchiseID']);
       return (lastID + 1).toString();
@@ -207,10 +181,8 @@ class _FranchisePageState extends State<FranchisePage> {
                         title: const Text("Address"),
                         cellBuilder: (context, item, index) {
                           final data = item.data() as Map<String, dynamic>;
-                          final address =
-                              data['Address'] as Map<String, dynamic>;
-                          return Text(
-                              '${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}');
+                          final address = data['Address'] as Map<String, dynamic>;
+                          return Text('${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}');
                         },
                         id: 'Address',
                         size: const FractionalColumnSize(0.3),
@@ -222,13 +194,11 @@ class _FranchisePageState extends State<FranchisePage> {
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit),
-                                onPressed: () =>
-                                    _showEditFranchiseModal(context, item),
+                                onPressed: () => _showEditFranchiseModal(context, item),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
-                                onPressed: () =>
-                                    _deleteFranchise(context, item.id),
+                                onPressed: () => _deleteFranchise(context, item.id),
                               ),
                             ],
                           );
@@ -251,9 +221,7 @@ class _FranchisePageState extends State<FranchisePage> {
     );
   }
 
-  Widget _buildTextField(
-      String label, TextEditingController controller, FlutterFlowTheme theme,
-      {bool isNumeric = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, FlutterFlowTheme theme, {bool isNumeric = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -283,8 +251,7 @@ class _FranchisePageState extends State<FranchisePage> {
       context: context,
       isScrollControlled: true,
       builder: (context) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -298,9 +265,9 @@ class _FranchisePageState extends State<FranchisePage> {
               _buildTextField('Country', _countryController, theme),
               _buildTextField('Street', _streetController, theme),
               _buildTextField('Zip', _zipController, theme, isNumeric: true),
-              ElevatedButton(                
-                style: const ButtonStyle(
-                  fixedSize: WidgetStatePropertyAll(Size(400, 50)),
+              ElevatedButton(
+                style: ButtonStyle(
+                  fixedSize: MaterialStateProperty.all(const Size(400, 50)),
                 ),
                 onPressed: () {
                   _addFranchise();
@@ -333,8 +300,7 @@ class _FranchisePageState extends State<FranchisePage> {
       context: context,
       isScrollControlled: true,
       builder: (context) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -349,8 +315,8 @@ class _FranchisePageState extends State<FranchisePage> {
               _buildTextField('Street', _streetController, theme),
               _buildTextField('Zip', _zipController, theme, isNumeric: true),
               ElevatedButton(
-                style: const ButtonStyle(
-                  fixedSize: WidgetStatePropertyAll(Size(400, 50)),
+                style: ButtonStyle(
+                  fixedSize: MaterialStateProperty.all(const Size(400, 50)),
                 ),
                 onPressed: () {
                   _updateFranchise(doc.id);
@@ -368,12 +334,7 @@ class _FranchisePageState extends State<FranchisePage> {
   Future<void> _updateFranchise(String id) async {
     final user = _auth.currentUser;
     if (user != null) {
-      await _firestore
-          .collection('franchise')
-          .doc(user.uid)
-          .collection('list')
-          .doc(id)
-          .update({
+      await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').doc(id).update({
         'Name': _nameController.text,
         'Email': _emailController.text,
         'Phone': _phoneController.text,
@@ -409,15 +370,8 @@ class _FranchisePageState extends State<FranchisePage> {
     );
 
     if (confirmed == true) {
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore
-            .collection('franchise')
-            .doc(user.uid)
-            .collection('list')
-            .doc(id)
-            .delete();
-
+      if (widget.franchiseID.isNotEmpty) {
+        await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').doc(id).delete();
         _pagedDataTableController.refresh(); // Refresh the table after deletion
       }
     }

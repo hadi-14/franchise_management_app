@@ -48,14 +48,15 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: PageView(
               controller: pageController,
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 const DashboardPage(),
                 const StoreDetailsPage(),
                 const PurchaseOrdersPage(),
                 ProductsPage(franchiseID: userState.franchiseID),
                 CategoriesPage(franchiseID: userState.franchiseID),
-                const FranchisePage(),
-                const CompanyDetailsPage(),
+                FranchisePage(franchiseID: userState.franchiseID),
+                CompanyDetailsPage(franchiseID: userState.franchiseID),
               ],
             ),
           ),

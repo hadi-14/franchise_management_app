@@ -39,7 +39,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     if (user != null) {
       final docSnapshot =
           await _firestore.collection('user').doc(user.uid).get();
-      final data = docSnapshot.data() as Map<String, dynamic>?;
+      final data = docSnapshot.data();
       if (data != null) {
         _companyNameController.text = data['Company'] ?? '';
         _websiteController.text = data['Website'] ?? '';
