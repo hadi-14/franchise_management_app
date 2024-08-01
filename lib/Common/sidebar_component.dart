@@ -132,7 +132,7 @@ class _SidebarComponentState extends State<SidebarComponent> {
           icon: const Icon(Icons.store),
         ),
         SideMenuItem(
-          title: 'Inventory',
+          title: 'Purchases',
           onTap: (index, _) {
             widget.sideMenuController.changePage(2);
           },

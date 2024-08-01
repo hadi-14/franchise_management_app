@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../Common/user_state.dart';
 
 class AddPurchaseOrderPage extends StatefulWidget {
   final String? purchaseOrderId;
@@ -12,7 +12,6 @@ class AddPurchaseOrderPage extends StatefulWidget {
 }
 
 class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _orderIDController = TextEditingController();
@@ -42,11 +41,13 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   }
 
   Future<void> _fetchStores() async {
-    final user = _auth.currentUser;
-    if (user != null) {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
       final storesSnapshot = await _firestore
           .collection('store')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .get();
 
@@ -62,11 +63,13 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   }
 
   Future<void> _fetchCategories() async {
-    final user = _auth.currentUser;
-    if (user != null) {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
       final categoriesSnapshot = await _firestore
           .collection('product')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('category')
           .get();
 
@@ -82,11 +85,13 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   }
 
   Future<void> _fetchProducts() async {
-    final user = _auth.currentUser;
-    if (user != null) {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
       final productsSnapshot = await _firestore
           .collection('product')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .get();
 
@@ -109,6 +114,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
         'Quantity': 1,
         'UnitPrice': 0.0,
         'Total': 0.0,
+        'isBox': false,
+        'piecesPerBox': 0,
       });
     });
   }
@@ -132,14 +139,12 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
     });
   }
 
-  Future<void> _addPurchaseOrder() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      await _firestore
-          .collection('purchase')
-          .doc(user.uid)
-          .collection('list')
-          .add({
+  Future<void> _savePurchaseOrder() async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
+      final purchaseOrderData = {
         'OrderID': _orderIDController.text,
         'StoreID': _selectedStore,
         'State': _selectedState,
@@ -148,17 +153,37 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
         'NetTotal': double.parse(_netTotalController.text),
         'Date': _selectedDate,
         'items': _items,
-      });
+      };
+
+      if (widget.purchaseOrderId == null) {
+        // Add new purchase order
+        await _firestore
+            .collection('purchase')
+            .doc(franchiseID)
+            .collection('list')
+            .add(purchaseOrderData);
+      } else {
+        // Update existing purchase order
+        await _firestore
+            .collection('purchase')
+            .doc(franchiseID)
+            .collection('list')
+            .doc(widget.purchaseOrderId)
+            .update(purchaseOrderData);
+      }
+
       Navigator.pop(context);
     }
   }
 
   Future<void> _loadPurchaseOrder(String purchaseOrderId) async {
-    final user = _auth.currentUser;
-    if (user != null) {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
       final docSnapshot = await _firestore
           .collection('purchase')
-          .doc(user.uid)
+          .doc(franchiseID)
           .collection('list')
           .doc(purchaseOrderId)
           .get();
@@ -179,10 +204,6 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
     }
   }
 
-  void _printInvoice() {
-    // Implement the functionality to print the invoice
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -191,11 +212,11 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
       appBar: AppBar(
         title: const Text('Add Purchase Order'),
         actions: [
-          if (widget.purchaseOrderId != null)
-            IconButton(
-              icon: const Icon(Icons.print),
-              onPressed: _printInvoice,
-            ),
+          // if (widget.purchaseOrderId != null)
+            // IconButton(
+            //   icon: const Icon(Icons.print),
+            //   onPressed: _printInvoice,
+            // ),
         ],
       ),
       body: Padding(
@@ -286,37 +307,73 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                 },
                               ),
                               _buildTextField(
-                                  'Quantity',
-                                  TextEditingController(
-                                      text:
-                                          _items[index]['Quantity'].toString()),
-                                  keyboardType: TextInputType.number,
-                                  onChanged: (value) {
-                                setState(() {
-                                  _items[index]['Quantity'] = int.parse(value);
-                                  _items[index]['Total'] = _items[index]
-                                          ['Quantity'] *
-                                      _items[index]['UnitPrice'];
-                                  _calculateTotal();
-                                });
-                              }),
+                                'Quantity',
+                                TextEditingController(
+                                  text: _items[index]['Quantity'].toString(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _items[index]['Quantity'] = int.parse(value);
+                                    _items[index]['Total'] =
+                                        _items[index]['Quantity'] *
+                                            _items[index]['UnitPrice'];
+                                    _calculateTotal();
+                                  });
+                                },
+                              ),
                               _buildTextField(
-                                  'Unit Price',
+                                'Unit Price',
+                                TextEditingController(
+                                  text: _items[index]['UnitPrice'].toString(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _items[index]['UnitPrice'] =
+                                        double.parse(value);
+                                    _items[index]['Total'] =
+                                        _items[index]['Quantity'] *
+                                            _items[index]['UnitPrice'];
+                                    _calculateTotal();
+                                  });
+                                },
+                              ),
+                              _buildTextField(
+                                  'Pieces per Box',
                                   TextEditingController(
-                                      text: _items[index]['UnitPrice']
-                                          .toString()),
+                                    text: _items[index]['piecesPerBox']
+                                        .toString(),
+                                  ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
-                                setState(() {
-                                  _items[index]['UnitPrice'] =
-                                      double.parse(value);
-                                  _items[index]['Total'] = _items[index]
-                                          ['Quantity'] *
-                                      _items[index]['UnitPrice'];
-                                  _calculateTotal();
-                                });
-                              }),
-                            ],
+                                    setState(() {
+                                      _items[index]['piecesPerBox'] =
+                                          int.parse(value);
+                                      _items[index]['Total'] = _items[index]
+                                                  ['Quantity'] *
+                                              _items[index]['UnitPrice'];
+                                      _calculateTotal();
+                                    });
+                                  },
+                                enabled: _items[index]['isBox']
+                                ),
+                            
+                              Column(
+                                children: [
+                                  Checkbox(
+                                    value: _items[index]['isBox'],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _items[index]['isBox'] = value;
+                                        _calculateTotal();
+                                      });
+                                    },
+                                  ),
+                                  const Text('Box'),
+                                ],
+                              ),
+                                ],
                           ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -328,7 +385,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                               ElevatedButton(
                                 onPressed: () => _removeItem(index),
                                 style: ElevatedButton.styleFrom(
-                                    foregroundColor: Colors.red),
+                                  foregroundColor: Colors.red,
+                                ),
                                 child: const Text('Remove Item'),
                               ),
                             ],
@@ -341,8 +399,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _addPurchaseOrder,
-                child: const Text('Add Purchase Order'),
+                onPressed: _savePurchaseOrder,
+                child: Text(widget.purchaseOrderId == null ? 'Add Purchase Order' : 'Update Purchase Order'),
               ),
             ],
           ),

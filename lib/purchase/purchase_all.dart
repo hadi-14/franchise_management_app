@@ -138,7 +138,7 @@ class _PurchaseOrdersPageState extends State<PurchaseOrdersPage> {
                         cellBuilder: (context, item, index) {
                           final data = item.data() as Map<String, dynamic>;
                           return FutureBuilder<DocumentSnapshot>(
-                            future: _firestore.collection('store').doc(_auth.currentUser!.uid).collection('list').doc(data['StoreID']).get(),
+                            future: _firestore.collection('store').doc(userState.franchiseID).collection('list').doc(data['StoreID']).get(),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
                                 return const Text('Loading...');
