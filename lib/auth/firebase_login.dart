@@ -41,23 +41,13 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> _signInWithEmail() async {
-    try {
-      await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),  
-        password: _passwordController.text.trim(),
-      );
-
-      print(_auth.currentUser);
-
-      // Navigate to home page or display success message
-    } catch (e) {
-      // Handle errors
-      print('Failed to sign in with email: $e');
-    }
+    await _auth.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
   }
 
   Future<void> _signUpWithEmail() async {
-    try {
       await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -65,36 +55,22 @@ class _LoginPageState extends State<LoginPage>
 
       final user = _auth.currentUser!;
       user.updateDisplayName(_displayNameController.text.trim());
-      // user.updatePhoneNumber();
-
-      print(user);
-
-      // Navigate to home page or display success message
-    } catch (e) {
-      // Handle errors
-      print('Failed to sign in with email: $e');
-    }
   }
 
   Future<void> _signInWithGoogle() async {
-    try {
-      final googleAuth = await _googleSignIn.signInOnline();
+    final googleAuth = await _googleSignIn.signInOnline();
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth!.accessToken,
-        idToken: googleAuth.idToken,
-      );
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth!.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-      await _auth.signInWithCredential(credential);
-      // Navigate to home page or display success message
-    } catch (e) {
-      // Handle errors
-      print('Failed to sign in with Google: $e');
-    }
+    await _auth.signInWithCredential(credential);
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
     setState(() {
       if (pickedFile != null) {
         _profileImage = File(pickedFile.path);

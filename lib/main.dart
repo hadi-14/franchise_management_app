@@ -1,21 +1,18 @@
-import 'package:paged_datatable/paged_datatable.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-
-import 'package:franchise_management_app/auth/firebase_login.dart';
+import 'package:paged_datatable/paged_datatable.dart';
 import 'package:provider/provider.dart';
-import '../HomePage.dart';
-
-import '../Common/flutter_flow_theme.dart';
-import '../firebase_options.dart';
-import 'Common/CompleteProfile.dart';
+import 'auth/firebase_login.dart';
+import 'auth/edit_credentials.dart';
+import 'auth/complete_profile.dart';
+import 'Common/flutter_flow_theme.dart';
 import 'Common/user_state.dart';
+import 'HomePage.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print(DefaultFirebaseOptions.currentPlatform);
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -42,7 +39,12 @@ class MyApp extends StatelessWidget {
             seedColor: FlutterFlowTheme.of(context).primary),
         useMaterial3: true,
       ),
-      home: const AuthHandler(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const AuthHandler(),
+        '/login': (context) => const LoginPage(),
+        '/editCredentials': (context) => const EditCredentialsPage(),
+      },
       localizationsDelegates: const [PagedDataTableLocalization.delegate],
     );
   }
@@ -66,8 +68,6 @@ class _AuthHandlerState extends State<AuthHandler> {
   }
 
   Future<void> _checkLoginStatus() async {
-    // SharedPreferences prefs = await SharedPreferences.getInstance();
-
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
         setState(() {
@@ -78,13 +78,8 @@ class _AuthHandlerState extends State<AuthHandler> {
           _isLoggedIn = true;
           _user = user;
         });
-        print(user);
       }
     });
-
-    // setState(() {
-    //   _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    // });
   }
 
   @override

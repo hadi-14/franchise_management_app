@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../Common/user_state.dart';
 
@@ -23,7 +24,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   List<DropdownMenuItem<String>> _storeDropdownItems = [];
   List<DropdownMenuItem<String>> _categoryDropdownItems = [];
   List<DropdownMenuItem<String>> _productDropdownItems = [];
-  final List<Map<String, dynamic>> _items = [];
+  List<Map<String, dynamic>> _items = [];
   String _selectedState = 'Pending';
   DateTime _selectedDate = DateTime.now();
 
@@ -116,6 +117,9 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
         'Total': 0.0,
         'isBox': false,
         'piecesPerBox': 0,
+        'quantityController': TextEditingController(),
+        'unitPriceController': TextEditingController(),
+        'piecesPerBoxController': TextEditingController(),
       });
     });
   }
@@ -152,7 +156,13 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
         'Tax': double.parse(_taxController.text),
         'NetTotal': double.parse(_netTotalController.text),
         'Date': _selectedDate,
-        'items': _items,
+        'items': _items.map((item) {
+          final newItem = Map<String, dynamic>.from(item);
+          newItem.remove('quantityController');
+          newItem.remove('unitPriceController');
+          newItem.remove('piecesPerBoxController');
+          return newItem;
+        }).toList(),
       };
 
       if (widget.purchaseOrderId == null) {
@@ -198,9 +208,21 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           _netTotalController.text = data['NetTotal'].toString();
           _selectedDate = (data['Date'] as Timestamp).toDate();
           _items.clear();
-          _items.addAll(List<Map<String, dynamic>>.from(data['items']));
+          _items.addAll(List<Map<String, dynamic>>.from(data['items']).map((item) {
+            item['quantityController'] = TextEditingController(text: item['Quantity'].toString());
+            item['unitPriceController'] = TextEditingController(text: item['UnitPrice'].toString());
+            item['piecesPerBoxController'] = TextEditingController(text: item['piecesPerBox'].toString());
+            return item;
+          }).toList());
         });
       }
+    }
+  }
+
+  void _handleKey(RawKeyEvent event) {
+    if (event is RawKeyDownEvent && event.logicalKey.keyId == 4295426088) {
+      // Enter key pressed
+      _savePurchaseOrder();
     }
   }
 
@@ -212,139 +234,135 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
       appBar: AppBar(
         title: const Text('Add Purchase Order'),
         actions: [
-          // if (widget.purchaseOrderId != null)
-            // IconButton(
-            //   icon: const Icon(Icons.print),
-            //   onPressed: _printInvoice,
-            // ),
+          if (widget.purchaseOrderId != null)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _savePurchaseOrder,
+            ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 16.0,
-                runSpacing: 16.0,
-                children: [
-                  _buildTextField('OrderID', _orderIDController),
-                  _buildDropdown(
-                    'Store',
-                    _selectedStore,
-                    _storeDropdownItems,
-                    (value) {
-                      setState(() {
-                        _selectedStore = value;
-                      });
-                    },
-                  ),
-                  _buildDropdown(
-                    'State',
-                    _selectedState,
-                    _states
-                        .map((state) => DropdownMenuItem<String>(
-                              value: state,
-                              child: Text(state),
-                            ))
-                        .toList(),
-                    (value) {
-                      setState(() {
-                        _selectedState = value!;
-                      });
-                    },
-                  ),
-                  _buildTextField('Total Amount', _totalAmountController,
-                      keyboardType: TextInputType.number, enabled: false),
-                  _buildTextField('Tax (%)', _taxController,
-                      keyboardType: TextInputType.number, onChanged: (value) {
-                    _calculateTotal();
-                  }),
-                  _buildTextField('Net Total', _netTotalController,
-                      keyboardType: TextInputType.number, enabled: false),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _addItem,
-                child: const Text('+ Add New Item'),
-              ),
-              const SizedBox(height: 16),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _items.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Wrap(
-                            spacing: 16.0,
-                            runSpacing: 8.0,
-                            children: [
-                              _buildDropdown(
-                                'Category',
-                                _items[index]['Category'],
-                                _categoryDropdownItems,
-                                (value) {
-                                  setState(() {
-                                    _items[index]['Category'] = value;
-                                    _fetchProducts();
-                                  });
-                                },
-                              ),
-                              _buildDropdown(
-                                'Product',
-                                _items[index]['Product'],
-                                _productDropdownItems,
-                                (value) {
-                                  setState(() {
-                                    _items[index]['Product'] = value;
-                                  });
-                                },
-                              ),
-                              _buildTextField(
-                                'Quantity',
-                                TextEditingController(
-                                  text: _items[index]['Quantity'].toString(),
+      body: RawKeyboardListener(
+        focusNode: FocusNode(),
+        onKey: _handleKey,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 16.0,
+                  runSpacing: 16.0,
+                  children: [
+                    _buildTextField('OrderID', _orderIDController),
+                    _buildDropdown(
+                      'Store',
+                      _selectedStore,
+                      _storeDropdownItems,
+                      (value) {
+                        setState(() {
+                          _selectedStore = value;
+                        });
+                      },
+                    ),
+                    _buildDropdown(
+                      'State',
+                      _selectedState,
+                      _states
+                          .map((state) => DropdownMenuItem<String>(
+                                value: state,
+                                child: Text(state),
+                              ))
+                          .toList(),
+                      (value) {
+                        setState(() {
+                          _selectedState = value!;
+                        });
+                      },
+                    ),
+                    _buildTextField('Total Amount', _totalAmountController,
+                        keyboardType: TextInputType.number, enabled: false),
+                    _buildTextField('Tax (%)', _taxController,
+                        keyboardType: TextInputType.number, onChanged: (value) {
+                      _calculateTotal();
+                    }),
+                    _buildTextField('Net Total', _netTotalController,
+                        keyboardType: TextInputType.number, enabled: false),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _addItem,
+                  child: const Text('+ Add New Item'),
+                ),
+                const SizedBox(height: 16),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Wrap(
+                              spacing: 16.0,
+                              runSpacing: 8.0,
+                              children: [
+                                _buildDropdown(
+                                  'Category',
+                                  _items[index]['Category'],
+                                  _categoryDropdownItems,
+                                  (value) {
+                                    setState(() {
+                                      _items[index]['Category'] = value;
+                                      _fetchProducts();
+                                    });
+                                  },
                                 ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _items[index]['Quantity'] = int.parse(value);
-                                    _items[index]['Total'] =
-                                        _items[index]['Quantity'] *
-                                            _items[index]['UnitPrice'];
-                                    _calculateTotal();
-                                  });
-                                },
-                              ),
-                              _buildTextField(
-                                'Unit Price',
-                                TextEditingController(
-                                  text: _items[index]['UnitPrice'].toString(),
+                                _buildDropdown(
+                                  'Product',
+                                  _items[index]['Product'],
+                                  _productDropdownItems,
+                                  (value) {
+                                    setState(() {
+                                      _items[index]['Product'] = value;
+                                    });
+                                  },
                                 ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _items[index]['UnitPrice'] =
-                                        double.parse(value);
-                                    _items[index]['Total'] =
-                                        _items[index]['Quantity'] *
-                                            _items[index]['UnitPrice'];
-                                    _calculateTotal();
-                                  });
-                                },
-                              ),
-                              _buildTextField(
+                                _buildTextField(
+                                  'Quantity',
+                                  _items[index]['quantityController'],
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _items[index]['Quantity'] = int.parse(value);
+                                      _items[index]['Total'] =
+                                          _items[index]['Quantity'] *
+                                              _items[index]['UnitPrice'];
+                                      _calculateTotal();
+                                    });
+                                  },
+                                ),
+                                _buildTextField(
+                                  'Unit Price',
+                                  _items[index]['unitPriceController'],
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _items[index]['UnitPrice'] =
+                                          double.parse(value);
+                                      _items[index]['Total'] =
+                                          _items[index]['Quantity'] *
+                                              _items[index]['UnitPrice'];
+                                      _calculateTotal();
+                                    });
+                                  },
+                                ),
+                                _buildTextField(
                                   'Pieces per Box',
-                                  TextEditingController(
-                                    text: _items[index]['piecesPerBox']
-                                        .toString(),
-                                  ),
+                                  _items[index]['piecesPerBoxController'],
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
                                     setState(() {
@@ -356,53 +374,53 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                       _calculateTotal();
                                     });
                                   },
-                                enabled: _items[index]['isBox']
+                                  enabled: _items[index]['isBox'],
                                 ),
-                            
-                              Column(
-                                children: [
-                                  Checkbox(
-                                    value: _items[index]['isBox'],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _items[index]['isBox'] = value;
-                                        _calculateTotal();
-                                      });
-                                    },
+                                Column(
+                                  children: [
+                                    Checkbox(
+                                      value: _items[index]['isBox'],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _items[index]['isBox'] = value;
+                                          _calculateTotal();
+                                        });
+                                      },
+                                    ),
+                                    const Text('Box'),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Total: \$${_items[index]['Total'].toStringAsFixed(2)}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => _removeItem(index),
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.red,
                                   ),
-                                  const Text('Box'),
-                                ],
-                              ),
-                                ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total: \$${_items[index]['Total'].toStringAsFixed(2)}',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                              ElevatedButton(
-                                onPressed: () => _removeItem(index),
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: Colors.red,
+                                  child: const Text('Remove Item'),
                                 ),
-                                child: const Text('Remove Item'),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _savePurchaseOrder,
-                child: Text(widget.purchaseOrderId == null ? 'Add Purchase Order' : 'Update Purchase Order'),
-              ),
-            ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _savePurchaseOrder,
+                  child: Text(widget.purchaseOrderId == null ? 'Add Purchase Order' : 'Update Purchase Order'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

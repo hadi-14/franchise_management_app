@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
 import 'Common/sidebar_component.dart';
 import 'Common/user_state.dart';
+import 'auth/edit_credentials.dart';
 import 'store/store_details.dart';
 import '../franchise/franchise_details.dart';
 import '../product/product_categories.dart';
@@ -48,8 +49,9 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: PageView(
               controller: pageController,
-              physics: const NeverScrollableScrollPhysics(),
+              // physics: const NeverScrollableScrollPhysics(),
               children: [
+                const EditCredentialsPage(),
                 const DashboardPage(),
                 const StoreDetailsPage(),
                 const PurchaseOrdersPage(),

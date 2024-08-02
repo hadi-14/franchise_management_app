@@ -114,9 +114,16 @@ class _SidebarComponentState extends State<SidebarComponent> {
   List<SideMenuItem> _buildMenuItems() {
     final List<SideMenuItem> menuItems = [
       SideMenuItem(
-        title: 'Dashboard',
+        title: 'User Settings',
         onTap: (index, _) {
           widget.sideMenuController.changePage(0);
+        },
+        icon: const Icon(Icons.supervised_user_circle_rounded),
+      ),
+      SideMenuItem(
+        title: 'Dashboard',
+        onTap: (index, _) {
+          widget.sideMenuController.changePage(1);
         },
         icon: const Icon(Icons.space_dashboard),
       ),
@@ -127,28 +134,28 @@ class _SidebarComponentState extends State<SidebarComponent> {
         SideMenuItem(
           title: 'Store',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(1);
+            widget.sideMenuController.changePage(2);
           },
           icon: const Icon(Icons.store),
         ),
         SideMenuItem(
-          title: 'Purchases',
+          title: 'Purchase',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(2);
+            widget.sideMenuController.changePage(3);
           },
           icon: const Icon(Icons.local_grocery_store),
         ),
         SideMenuItem(
           title: 'Products',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(3);
+            widget.sideMenuController.changePage(4);
           },
           icon: const Icon(Icons.assignment),
         ),
         SideMenuItem(
           title: 'Product Categories',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(4);
+            widget.sideMenuController.changePage(5);
           },
           icon: const Icon(Icons.category_rounded),
         ),
@@ -160,14 +167,14 @@ class _SidebarComponentState extends State<SidebarComponent> {
         SideMenuItem(
           title: 'Franchises',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(5);
+            widget.sideMenuController.changePage(6);
           },
           icon: const Icon(Icons.cable),
         ),
         SideMenuItem(
           title: 'Company Details',
           onTap: (index, _) {
-            widget.sideMenuController.changePage(6);
+            widget.sideMenuController.changePage(7);
           },
           icon: const Icon(Icons.grid_on_rounded),
         ),
