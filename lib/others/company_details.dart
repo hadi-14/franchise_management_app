@@ -25,7 +25,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   final TextEditingController _inviteEmailController = TextEditingController();
 
   String? _verificationId;
+  String? _selectedRole;
   final _passwordGenerator = RandomPasswordGenerator();
+  final List<String> _roles = ['staff', 'franchisee'];
 
   @override
   void initState() {
@@ -134,7 +136,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   Future<void> _inviteUser() async {
     final inviteEmail = _inviteEmailController.text.trim();
-    if (inviteEmail.isNotEmpty) {
+    if (inviteEmail.isNotEmpty && _selectedRole != null) {
       try {
         final randomPassword = _passwordGenerator.randomPassword(
           letters: true,
@@ -151,8 +153,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
         // Set user role and franchise ID in Firestore
         await _firestore.collection('user').doc(userCredential.user?.uid).set({
-          'role': 'staff',
-          'franchiseId': widget.franchiseID,
+          'role': _selectedRole,
+          'franchiseID': widget.franchiseID,
         });
 
         await _auth.sendPasswordResetEmail(email: inviteEmail);
@@ -168,6 +170,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     }
   }
 
+  Future<void> _updateUserDetails() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.updateDisplayName(_usernameController.text);
+      // Phone number is updated via verification process
+      _auth.currentUser?.reload();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
@@ -177,35 +188,41 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         title: Text('Company Details', style: theme.headlineMedium),
         backgroundColor: theme.primary,
         actions: [
-          IconButton(
-            icon: Icon(Icons.logout, color: theme.primaryBackground),
-            onPressed: _signOut,
+          Tooltip(
+            message: 'Logout',
+            child: IconButton(
+              icon: Icon(Icons.logout, color: theme.primaryBackground),
+              onPressed: _signOut,
+            ),
           ),
-          IconButton(
-            icon: Icon(Icons.delete, color: theme.primaryBackground),
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Confirm Delete'),
-                  content: const Text('Are you sure you want to delete your account?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
+          Tooltip(
+            message: 'Delete Account',
+            child: IconButton(
+              icon: Icon(Icons.delete, color: theme.primaryBackground),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Confirm Delete'),
+                    content: const Text('Are you sure you want to delete your account?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
 
-              if (confirmed == true) {
-                _deleteAccount();
-              }
-            },
+                if (confirmed == true) {
+                  _deleteAccount();
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -250,10 +267,22 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               const SizedBox(height: 8),
               _buildTextField('Invite Email', _inviteEmailController, theme),
               const SizedBox(height: 8),
+              _buildDropdown('Select Role', _roles, (value) {
+                setState(() {
+                  _selectedRole = value;
+                });
+              }),
+              const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: _inviteUser,
                 child: const Text('Send Invite'),
               ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text('Invited Users', style: theme.headlineSmall),
+              const SizedBox(height: 8),
+              _buildInvitedUsersTable(),
             ],
           ),
         ),
@@ -284,12 +313,59 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     );
   }
 
-  Future<void> _updateUserDetails() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      await user.updateDisplayName(_usernameController.text);
-      // Phone number is updated via verification process
-      _auth.currentUser?.reload();
-    }
+  Widget _buildDropdown(String label, List<String> items, ValueChanged<String?> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: label,
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: FlutterFlowTheme.of(context).alternate, width: 2.0),
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: FlutterFlowTheme.of(context).primary, width: 2.0),
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+        ),
+        items: items.map((item) => DropdownMenuItem<String>(
+          value: item,
+          child: Text(item),
+        )).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildInvitedUsersTable() {
+    return FutureBuilder<QuerySnapshot>(
+      future: _firestore.collection('user')
+        .where('franchiseID', isEqualTo: widget.franchiseID)
+        .where('role', isNotEqualTo: 'owner') // Assuming 'owner' is the role for the franchise owner
+        .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final data = snapshot.data?.docs ?? [];
+
+        return DataTable(
+          columns: const [
+            DataColumn(label: Text('Email')),
+            DataColumn(label: Text('Role')),
+          ],
+          rows: data.map((doc) {
+            final userData = doc.data() as Map<String, dynamic>;
+            return DataRow(cells: [
+              DataCell(Text(userData['email'] ?? '')),
+              DataCell(Text(userData['role'] ?? '')),
+            ]);
+          }).toList(),
+        );
+      },
+    );
   }
 }

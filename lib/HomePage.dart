@@ -5,13 +5,14 @@ import '../Common/flutter_flow_theme.dart';
 import 'Common/sidebar_component.dart';
 import 'Common/user_state.dart';
 import 'auth/edit_credentials.dart';
-import 'store/store_details.dart';
+import '../store/store_details.dart';
 import '../franchise/franchise_details.dart';
 import '../product/product_categories.dart';
 import '../product/product_details.dart';
-import '../purchase/purchase_all.dart';
 import 'others/company_details.dart';
 import 'others/dashboard_page.dart';
+import 'purchase/purchase_all.dart';
+import 'sales/sales_all.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -49,17 +50,30 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: PageView(
               controller: pageController,
-              // physics: const NeverScrollableScrollPhysics(),
-              children: [
+              physics: const NeverScrollableScrollPhysics(),
+              children: userState.role == "owner" ? [
                 const EditCredentialsPage(),
                 const DashboardPage(),
                 const StoreDetailsPage(),
                 const PurchaseOrdersPage(),
+                const SalesOrdersPage(),
                 ProductsPage(franchiseID: userState.franchiseID),
                 CategoriesPage(franchiseID: userState.franchiseID),
                 FranchisePage(franchiseID: userState.franchiseID),
                 CompanyDetailsPage(franchiseID: userState.franchiseID),
-              ],
+              ] : (userState.role == "staff" ? [
+                const EditCredentialsPage(),
+                const StoreDetailsPage(),
+                const PurchaseOrdersPage(),
+                const SalesOrdersPage(),
+                ProductsPage(franchiseID: userState.franchiseID),
+                CategoriesPage(franchiseID: userState.franchiseID),
+                FranchisePage(franchiseID: userState.franchiseID),
+                CompanyDetailsPage(franchiseID: userState.franchiseID),
+              ] : [
+                const EditCredentialsPage(),
+                const SalesOrdersPage(),
+              ]),
             ),
           ),
         ],

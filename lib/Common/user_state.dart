@@ -8,9 +8,12 @@ class UserState with ChangeNotifier {
 
   User? _user;
   String _franchiseID = '';
+  String _role = '';
 
   User? get user => _user;
   String get franchiseID => _franchiseID;
+  String get role => _role;
+  String get userName => _auth.currentUser!.displayName!;
 
   UserState() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -29,6 +32,7 @@ class UserState with ChangeNotifier {
       final docSnapshot = await _firestore.collection('user').doc(_user!.uid).get();
       final data = docSnapshot.data();
       _franchiseID = data?['franchiseID'] ?? '';
+      _role = data?['role'] ?? '';
       notifyListeners();
     }
   }
