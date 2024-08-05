@@ -283,6 +283,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _upcCodeController = TextEditingController();
   String? _selectedCategory;
 
   @override
@@ -292,25 +294,29 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       final data = widget.productDoc!.data() as Map<String, dynamic>;
       _productNameController.text = data['productName'];
       _priceController.text = data['price'].toString();
+      _quantityController.text = data['quantity'].toString();
+      _upcCodeController.text = data['upcCode'].toString();
       _selectedCategory = data['category'];
     }
   }
 
   Future<void> _saveProduct(String franchiseID) async {
+    final productData = {
+      'productName': _productNameController.text,
+      'price': double.parse(_priceController.text),
+      'quantity': int.parse(_quantityController.text),
+      'upcCode': _upcCodeController.text,
+      'category': _selectedCategory,
+    };
+
     if (widget.productDoc == null) {
       final productID = await _getNextProductID(franchiseID);
       await _firestore.collection('product').doc(franchiseID).collection('list').add({
         'productID': productID,
-        'productName': _productNameController.text,
-        'price': double.parse(_priceController.text),
-        'category': _selectedCategory,
+        ...productData,
       });
     } else {
-      await _firestore.collection('product').doc(franchiseID).collection('list').doc(widget.productDoc!.id).update({
-        'productName': _productNameController.text,
-        'price': double.parse(_priceController.text),
-        'category': _selectedCategory,
-      });
+      await _firestore.collection('product').doc(franchiseID).collection('list').doc(widget.productDoc!.id).update(productData);
     }
     Navigator.pop(context);
   }
@@ -346,6 +352,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             children: [
               _buildTextField('Product Name', _productNameController, theme),
               _buildTextField('Price', _priceController, theme, isNumeric: true),
+              _buildTextField('Quantity', _quantityController, theme, isNumeric: true),
+              _buildTextField('UPC Code', _upcCodeController, theme),
               const SizedBox(height: 16),
               FutureBuilder<List<String>>(
                 future: _fetchCategories(userState.franchiseID),

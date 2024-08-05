@@ -9,11 +9,13 @@ class UserState with ChangeNotifier {
   User? _user;
   String _franchiseID = '';
   String _role = '';
+  String? _customerID;
 
   User? get user => _user;
   String get franchiseID => _franchiseID;
   String get role => _role;
   String get userName => _auth.currentUser!.displayName!;
+  String? get customerID => _customerID;
 
   UserState() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -29,11 +31,19 @@ class UserState with ChangeNotifier {
 
   Future<void> _fetchFranchiseID() async {
     if (_user != null) {
-      final docSnapshot = await _firestore.collection('user').doc(_user!.uid).get();
+      final docSnapshot =
+          await _firestore.collection('user').doc(_user!.uid).get();
       final data = docSnapshot.data();
       _franchiseID = data?['franchiseID'] ?? '';
       _role = data?['role'] ?? '';
+      _customerID = data?['customerID'] ?? '';
       notifyListeners();
+    }
+  }
+
+  Future<void> _setUserData(key, data) async {
+    if (_user != null) {
+      await _firestore.collection('user').doc(_user!.uid).update({key: data});
     }
   }
 }

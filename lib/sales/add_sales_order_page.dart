@@ -1,8 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../payment/payment_element/payment_element.dart';
+import '../payment/payment_page.dart';
 import '../Common/user_state.dart';
 
 class AddSalesOrderPage extends StatefulWidget {
@@ -159,7 +162,13 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
             .update(salesOrderData);
       }
 
-      Navigator.pop(context);
+      // Navigate to payment page after saving the sales order
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ((defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) ? PaymentSheetMobile() : PaymentElementWeb(amount: double.parse(_netTotalController.text))), //netTotal: double.parse(_netTotalController.text)
+        ),
+      );
     }
   }
 

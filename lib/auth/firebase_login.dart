@@ -3,8 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server.dart';
 
 import '../Common/flutter_flow_theme.dart';
+import 'verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -48,6 +52,11 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> _signUpWithEmail() async {
+    // Check if account creation is allowed
+    final settingsSnapshot = await FirebaseFirestore.instance.collection('user').doc('app').get();
+    final allowAccountCreation = settingsSnapshot.data()?['allowAccountCreation'] ?? false;
+
+    if (allowAccountCreation) {
       await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -55,6 +64,20 @@ class _LoginPageState extends State<LoginPage>
 
       final user = _auth.currentUser!;
       user.updateDisplayName(_displayNameController.text.trim());
+    } else {
+      // Send email for verification
+      await _sendVerificationEmail(
+        email: _emailController.text.trim(),
+        displayName: _displayNameController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
+
+      // Navigate to verification pending page
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const VerificationPendingPage()),
+      );
+    }
   }
 
   Future<void> _signInWithGoogle() async {
@@ -76,6 +99,25 @@ class _LoginPageState extends State<LoginPage>
         _profileImage = File(pickedFile.path);
       }
     });
+  }
+
+  Future<void> _sendVerificationEmail({required String email, required String displayName, required String phone}) async {
+    final link = 'https://yourapp.com/verify?email=$email&displayName=$displayName&phone=$phone';
+    final smtpServer = SmtpServer('smtp.gmail.com',
+        username: 'movais388@gmail.com', password: 'wvtr eguo rncf qkps');
+
+    final message = Message()
+      ..from = Address('movais388@gmail.com', 'Franchise Manager')
+      ..recipients.add('hadimillwala@gmail.com')
+      ..subject = 'Account Verification'
+      ..text = 'Please verify your account by clicking the link: $link';
+
+    try {
+      final sendReport = await send(message, smtpServer);
+      print('Message sent: ' + sendReport.toString());
+    } on MailerException catch (e) {
+      print('Message not sent. \n' + e.toString());
+    }
   }
 
   @override
