@@ -89,7 +89,13 @@ app.set('view engine', 'ejs');
 app.set('views', path_1.default.resolve(__dirname, '../views'));
 // Verify endpoint
 app.get('/verify', (req, res) => {
-    const { name, email, phone, company, address } = req.query;
+    const name = req.query.name;
+    const email = req.query.email;
+    const phone = req.query.phone;
+    const company = req.query.company;
+    console.log(req.query.address);
+    const address = JSON.parse(req.query.address);
+    console.log(address);
     res.render('verify', { name, email, phone, company, address });
 });
 app.post('/approve', (req, res) => __awaiter(void 0, void 0, void 0, function* () {

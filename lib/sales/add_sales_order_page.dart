@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../payment/payment_element/payment_element.dart';
 import '../payment/payment_page.dart';
 import '../Common/user_state.dart';
+import '../scanner/scanner.dart';
 
 class AddSalesOrderPage extends StatefulWidget {
   final String? salesOrderId;
@@ -16,7 +18,7 @@ class AddSalesOrderPage extends StatefulWidget {
   _AddSalesOrderPageState createState() => _AddSalesOrderPageState();
 }
 
-class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
+class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKeepAliveClientMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _orderIDController = TextEditingController();
@@ -34,6 +36,9 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
   String _previousState = 'Request';
 
   final List<String> _states = ['Request', 'Pending', 'Completed', 'Cancelled'];
+  
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -56,14 +61,16 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
           .collection('category')
           .get();
 
-      setState(() {
-        _categoryDropdownItems = categoriesSnapshot.docs
-            .map((doc) => DropdownMenuItem<String>(
-                  value: doc.id,
-                  child: Text(doc.data()['name']),
-                ))
-            .toList();
-      });
+      if (mounted) {
+        setState(() {
+          _categoryDropdownItems = categoriesSnapshot.docs
+              .map((doc) => DropdownMenuItem<String>(
+                    value: doc.id,
+                    child: Text(doc.data()['name']),
+                  ))
+              .toList();
+        });
+      }
     }
   }
 
@@ -78,14 +85,16 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
           .collection('list')
           .get();
 
-      setState(() {
-        _productDropdownItems = productsSnapshot.docs
-            .map((doc) => DropdownMenuItem<String>(
-                  value: doc.id,
-                  child: Text(doc.data()['productName']),
-                ))
-            .toList();
-      });
+      if (mounted) {
+        setState(() {
+          _productDropdownItems = productsSnapshot.docs
+              .map((doc) => DropdownMenuItem<String>(
+                    value: doc.id,
+                    child: Text(doc.data()['productName']),
+                  ))
+              .toList();
+        });
+      }
     }
   }
 
@@ -137,7 +146,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
         'OrderID': _orderIDController.text,
         'State': _selectedState,
         'TotalAmount': double.parse(_totalAmountController.text),
-        'Tax': double.parse(_taxController.text),
+        'Tax': double.parse(_taxController.text == "" ? _taxController.text: "0"),
         'ServiceFee': double.parse(_serviceFeeController.text),
         'NetTotal': double.parse(_netTotalController.text),
         'Date': _selectedDate,
@@ -241,6 +250,78 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
     }
   }
 
+  Future<void> _scanUPCCode() async {
+    String? result;
+
+    result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannerWithZoom()),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final userState = Provider.of<UserState>(context, listen: false);
+      final franchiseID = userState.franchiseID;
+
+      if (franchiseID.isNotEmpty) {
+        final productSnapshot = await _firestore
+            .collection('product')
+            .doc(franchiseID)
+            .collection('list')
+            .where('upcCode', isEqualTo: result)
+            .get();
+
+        if (productSnapshot.docs.isNotEmpty) {
+          final product = productSnapshot.docs.first;
+          final productData = product.data();
+          final category = productData['category'];
+          final productName = productData['productName'];
+
+          final categoriesSnapshot = await _firestore
+              .collection('product')
+              .doc(franchiseID)
+              .collection('category')
+              .where('name', isEqualTo: category)
+              .get();
+
+          final productsSnapshot = await _firestore
+              .collection('product')
+              .doc(franchiseID)
+              .collection('list')
+              .where('productName', isEqualTo: productName)
+              .get();
+
+          if (categoriesSnapshot.docs.isNotEmpty &&
+              productsSnapshot.docs.isNotEmpty) {
+            setState(() {
+              _items.add({
+                'Category': category,
+                'Product': productName,
+                'Quantity': 1,
+                'UnitPrice': productData['price'],
+                'Total': productData['price'],
+                'isBox': false,
+                'piecesPerBox': 0,
+                'quantityController': TextEditingController(text: '1'),
+                'unitPriceController': TextEditingController(
+                    text: productData['price'].toString()),
+                'piecesPerBoxController': TextEditingController(),
+              });
+              _calculateTotal();
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Category or Product not found')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No product found with this UPC code')),
+          );
+        }
+      }
+    }
+  }
+
   void _handleKey(RawKeyEvent event) {
     if (event is RawKeyDownEvent && event.logicalKey.keyId == 4295426088) {
       // Enter key pressed
@@ -250,6 +331,8 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -319,6 +402,11 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                 ElevatedButton(
                   onPressed: _isCompleted ? null : _addItem,
                   child: const Text('+ Add New Item'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _scanUPCCode,
+                  child: const Text('Scan UPC/QR Code'),
                 ),
                 const SizedBox(height: 16),
                 ListView.builder(
@@ -490,7 +578,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
-        value: value,
+        value: items.any((item) => item.value == value) ? value : null,
         onChanged: onChanged,
         items: items,
         decoration: InputDecoration(

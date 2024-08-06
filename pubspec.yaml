@@ -56,7 +56,6 @@ dependencies:
   open_file: ^3.3.2
   file_picker: ^8.0.6
   flutter_stripe: ^11.0.0
-  mailer: ^6.1.2
   http: ^1.2.2
   font_awesome_flutter: ^10.7.0
   flutter_stripe_web: ^6.0.0
@@ -64,6 +63,8 @@ dependencies:
   # flutter_barcode_scanner: ^2.0.0
   universal_html: ^2.2.4
   mobile_scanner: ^5.1.1
+  mailer: ^6.1.2
+  # mailto: ^2.0.0
 
 dev_dependencies:
   flutter_test:

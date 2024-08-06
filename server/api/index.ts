@@ -95,7 +95,11 @@ app.set('views', path.resolve(__dirname, '../views'));
 
 // Verify endpoint
 app.get('/verify', (req, res) => {
-  const { name, email, phone, company, address } = req.query;
+  const name = req.query.name as string;
+  const email = req.query.email as string;
+  const phone = req.query.phone as string;
+  const company = req.query.company as string;
+  const address = JSON.parse(req.query.address as string);
   res.render('verify', { name, email, phone, company, address });
 });
 

@@ -17,7 +17,8 @@ class ProductsPage extends StatefulWidget {
 class _ProductsPageState extends State<ProductsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
+  final PagedDataTableController<String, DocumentSnapshot>
+      _pagedDataTableController = PagedDataTableController();
 
   String? _selectedCategory;
 
@@ -31,15 +32,19 @@ class _ProductsPageState extends State<ProductsPage> {
     _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchProducts(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
-
-    Query query = _firestore.collection('product').doc(widget.franchiseID).collection('list');
+  Future<(List<DocumentSnapshot>, String?)> _fetchProducts(int pageSize,
+      SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
+    Query query = _firestore
+        .collection('product')
+        .doc(widget.franchiseID)
+        .collection('list');
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
           .where('productName', isGreaterThanOrEqualTo: _searchController.text)
-          .where('productName', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+          .where('productName',
+              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
     // Apply category filter
@@ -49,11 +54,17 @@ class _ProductsPageState extends State<ProductsPage> {
 
     // Apply pagination
     if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore.collection('product').doc(widget.franchiseID).collection('list').doc(pageToken).get());
+      query = query.startAfterDocument(await _firestore
+          .collection('product')
+          .doc(widget.franchiseID)
+          .collection('list')
+          .doc(pageToken)
+          .get());
     }
 
     final snapshot = await query.limit(pageSize).get();
-    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
+    final nextPageToken =
+        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
 
     return (snapshot.docs, nextPageToken);
   }
@@ -62,7 +73,11 @@ class _ProductsPageState extends State<ProductsPage> {
     if (widget.franchiseID.isEmpty) {
       return [];
     }
-    final snapshot = await _firestore.collection('product').doc(widget.franchiseID).collection('category').get();
+    final snapshot = await _firestore
+        .collection('product')
+        .doc(widget.franchiseID)
+        .collection('category')
+        .get();
     return snapshot.docs.map((doc) => doc['name'] as String).toList();
   }
 
@@ -169,6 +184,16 @@ class _ProductsPageState extends State<ProductsPage> {
                         size: const FractionalColumnSize(0.15),
                       ),
                       TableColumn(
+                        title: const Text("UPC Code"),
+                        cellBuilder: (context, item, index) {
+                          final data = item.data() as Map<String, dynamic>;
+                          return Text(data['upcCode']);
+                        },
+                        id: 'upcCode',
+                        sortable: true,
+                        size: const FractionalColumnSize(0.15),
+                      ),
+                      TableColumn(
                         title: const Text("Price"),
                         cellBuilder: (context, item, index) {
                           final data = item.data() as Map<String, dynamic>;
@@ -186,7 +211,7 @@ class _ProductsPageState extends State<ProductsPage> {
                         },
                         id: 'category',
                         sortable: true,
-                        size: const FractionalColumnSize(0.15),
+                        size: const FractionalColumnSize(0.1),
                       ),
                       TableColumn(
                         title: const Text("Quantity"),
@@ -205,11 +230,14 @@ class _ProductsPageState extends State<ProductsPage> {
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.edit),
-                                onPressed: () => _showProductDetailsPage(context, productDoc: item),
+                                onPressed: () => _showProductDetailsPage(
+                                    context,
+                                    productDoc: item),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
-                                onPressed: () => _deleteProduct(context, item.id),
+                                onPressed: () =>
+                                    _deleteProduct(context, item.id),
                               ),
                             ],
                           );
@@ -232,7 +260,8 @@ class _ProductsPageState extends State<ProductsPage> {
     );
   }
 
-  void _showProductDetailsPage(BuildContext context, {DocumentSnapshot? productDoc}) async {
+  void _showProductDetailsPage(BuildContext context,
+      {DocumentSnapshot? productDoc}) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -263,7 +292,12 @@ class _ProductsPageState extends State<ProductsPage> {
 
     if (confirmed == true) {
       if (widget.franchiseID.isNotEmpty) {
-        await _firestore.collection('product').doc(widget.franchiseID).collection('list').doc(id).delete();
+        await _firestore
+            .collection('product')
+            .doc(widget.franchiseID)
+            .collection('list')
+            .doc(id)
+            .delete();
         _pagedDataTableController.refresh(); // Refresh the table after deletion
       }
     }
@@ -279,7 +313,7 @@ class ProductDetailsPage extends StatefulWidget {
   _ProductDetailsPageState createState() => _ProductDetailsPageState();
 }
 
-class _ProductDetailsPageState extends State<ProductDetailsPage> {
+class _ProductDetailsPageState extends State<ProductDetailsPage>{
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -311,18 +345,33 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
     if (widget.productDoc == null) {
       final productID = await _getNextProductID(franchiseID);
-      await _firestore.collection('product').doc(franchiseID).collection('list').add({
+      await _firestore
+          .collection('product')
+          .doc(franchiseID)
+          .collection('list')
+          .add({
         'productID': productID,
         ...productData,
       });
     } else {
-      await _firestore.collection('product').doc(franchiseID).collection('list').doc(widget.productDoc!.id).update(productData);
+      await _firestore
+          .collection('product')
+          .doc(franchiseID)
+          .collection('list')
+          .doc(widget.productDoc!.id)
+          .update(productData);
     }
     Navigator.pop(context);
   }
 
   Future<String> _getNextProductID(String franchiseID) async {
-    final snapshot = await _firestore.collection('product').doc(franchiseID).collection('list').orderBy('productID', descending: true).limit(1).get();
+    final snapshot = await _firestore
+        .collection('product')
+        .doc(franchiseID)
+        .collection('list')
+        .orderBy('productID', descending: true)
+        .limit(1)
+        .get();
     if (snapshot.docs.isNotEmpty) {
       final lastID = int.parse(snapshot.docs.first['productID']);
       return (lastID + 1).toString();
@@ -331,7 +380,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   }
 
   Future<List<String>> _fetchCategories(String franchiseID) async {
-    final snapshot = await _firestore.collection('product').doc(franchiseID).collection('category').get();
+    final snapshot = await _firestore
+        .collection('product')
+        .doc(franchiseID)
+        .collection('category')
+        .get();
     return snapshot.docs.map((doc) => doc['name'] as String).toList();
   }
 
@@ -342,7 +395,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.productDoc == null ? 'Add Product' : 'Edit Product', style: theme.headlineMedium),
+        title: Text(widget.productDoc == null ? 'Add Product' : 'Edit Product',
+            style: theme.headlineMedium),
         backgroundColor: theme.primary,
       ),
       body: Padding(
@@ -351,8 +405,10 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           child: Column(
             children: [
               _buildTextField('Product Name', _productNameController, theme),
-              _buildTextField('Price', _priceController, theme, isNumeric: true),
-              _buildTextField('Quantity', _quantityController, theme, isNumeric: true),
+              _buildTextField('Price', _priceController, theme,
+                  isNumeric: true),
+              _buildTextField('Quantity', _quantityController, theme,
+                  isNumeric: true),
               _buildTextField('UPC Code', _upcCodeController, theme),
               const SizedBox(height: 16),
               FutureBuilder<List<String>>(
@@ -390,7 +446,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => _saveProduct(userState.franchiseID),
-                child: Text(widget.productDoc == null ? 'Add Product' : 'Update Product'),
+                child: Text(widget.productDoc == null
+                    ? 'Add Product'
+                    : 'Update Product'),
               ),
             ],
           ),
@@ -399,7 +457,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, FlutterFlowTheme theme, {bool isNumeric = false}) {
+  Widget _buildTextField(
+      String label, TextEditingController controller, FlutterFlowTheme theme,
+      {bool isNumeric = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(

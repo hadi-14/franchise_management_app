@@ -271,7 +271,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           setState(() {
             _items.add({
               'Category': product.data()['category'],
-              'Product': product.id,
+              'Product': product.data()['productName'],
               'Quantity': 1,
               'UnitPrice': product.data()['price'],
               'Total': product.data()['price'],

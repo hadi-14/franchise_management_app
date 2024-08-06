@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
@@ -6,7 +8,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
-
+// import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/foundation.dart';
 import '../.env.dart';
 import '../Common/flutter_flow_theme.dart';
 import 'verification_page.dart';
@@ -19,13 +22,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
@@ -40,6 +42,7 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void initState() {
+    super.initState();
     _googleSignIn = GoogleSignIn(
       params: const GoogleSignInParams(
         clientId:
@@ -48,32 +51,30 @@ class _LoginPageState extends State<LoginPage>
         redirectPort: 4321,
       ),
     );
-
-    super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _signInWithEmail() async {
-    await _auth.signInWithEmailAndPassword(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-    );
-  }
-
-  Future<void> _signUpWithEmail() async {
-    // Check if account creation is allowed
-    final settingsSnapshot = await FirebaseFirestore.instance.collection('user').doc('app').get();
-    final allowAccountCreation = settingsSnapshot.data()?['allowAccountCreation'] ?? false;
-
-    if (allowAccountCreation) {
-      await _auth.createUserWithEmailAndPassword(
+    try {
+      await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+    } catch (e) {
+      // Handle error
+      print(e);
+    }
+  }
 
-      final user = _auth.currentUser!;
-      user.updateDisplayName(_displayNameController.text.trim());
-    } else {
+  Future<void> _signUpWithEmail() async {
+    try {
       // Send email for verification
       await _sendVerificationEmail(
         email: _emailController.text.trim(),
@@ -87,26 +88,36 @@ class _LoginPageState extends State<LoginPage>
           'street': _streetController.text,
           'zip': int.parse(_zipController.text),
         },
-
       );
 
-      // Navigate to verification pending page
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const VerificationPendingPage()),
-      );
+        // Navigate to verification pending page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const VerificationPendingPage()),
+        );
+    } catch (e) {
+      // Handle error
+      print(e);
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    final googleAuth = await _googleSignIn.signInOnline();
+    try {
+      final googleAuth = await _googleSignIn.signInOnline();
 
-    final AuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth!.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      if (googleAuth != null) {
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
 
-    await _auth.signInWithCredential(credential);
+        await _auth.signInWithCredential(credential);
+      }
+    } catch (e) {
+      // Handle error
+      print(e);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -119,10 +130,17 @@ class _LoginPageState extends State<LoginPage>
     });
   }
 
-  Future<void> _sendVerificationEmail({required String email, required String displayName, required String phone, required String company, required dynamic address}) async {
-    final link = 'https://franchise-management-server.vercel.app/verify?email=$email&displayName=$displayName&phone=$phone&company=$company&address=$address';
-    final smtpServer = SmtpServer('smtp.gmail.com',
-        username: smtp_mail, password: smtp_pass);
+  Future<void> _sendVerificationEmail({
+    required String email,
+    required String displayName,
+    required String phone,
+    required String company,
+    required Map<String, dynamic> address,
+  }) async {
+    final link =
+        'https://franchise-management-server.vercel.app/verify?email=$email&name=$displayName&phone=$phone&company=$company&address=${json.encode(address)}';
+    final smtpServer =
+        SmtpServer('smtp.gmail.com', username: smtp_mail, password: smtp_pass);
 
     final message = Message()
       ..from = const Address(smtp_mail, 'Franchise Manager')
@@ -310,17 +328,47 @@ class _LoginPageState extends State<LoginPage>
                 controller: _companyController,
                 labelText: 'CompanyName',
                 theme: theme,
-                keyboardType: TextInputType.name, autofillHints: const [AutofillHints.name],
+                keyboardType: TextInputType.name,
+                autofillHints: const [AutofillHints.name],
               ),
-              
-              const Divider(height: 10,),
-
-              _buildTextField(labelText: 'City', controller:_cityController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.addressCity],),
-              _buildTextField(labelText: 'State', controller:_stateController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.addressState],),
-              _buildTextField(labelText: 'Country', controller:_countryController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.countryName],),
-              _buildTextField(labelText: 'Street', controller:_streetController, theme: theme, keyboardType: TextInputType.streetAddress, autofillHints: const [AutofillHints.fullStreetAddress],),
-              _buildTextField(labelText: 'Zip', controller:_zipController, theme: theme, keyboardType: TextInputType.number, autofillHints: const [AutofillHints.postalCode],),
-              
+              const Divider(
+                height: 10,
+              ),
+              _buildTextField(
+                labelText: 'City',
+                controller: _cityController,
+                theme: theme,
+                keyboardType: TextInputType.text,
+                autofillHints: const [AutofillHints.addressCity],
+              ),
+              _buildTextField(
+                labelText: 'State',
+                controller: _stateController,
+                theme: theme,
+                keyboardType: TextInputType.text,
+                autofillHints: const [AutofillHints.addressState],
+              ),
+              _buildTextField(
+                labelText: 'Country',
+                controller: _countryController,
+                theme: theme,
+                keyboardType: TextInputType.text,
+                autofillHints: const [AutofillHints.countryName],
+              ),
+              _buildTextField(
+                labelText: 'Street',
+                controller: _streetController,
+                theme: theme,
+                keyboardType: TextInputType.streetAddress,
+                autofillHints: const [AutofillHints.fullStreetAddress],
+              ),
+              _buildTextField(
+                labelText: 'Zip',
+                controller: _zipController,
+                theme: theme,
+                keyboardType: TextInputType.number,
+                autofillHints: const [AutofillHints.postalCode],
+              ),
               Padding(
                 padding:
                     const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 16.0),

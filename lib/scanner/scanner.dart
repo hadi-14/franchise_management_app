@@ -17,7 +17,7 @@ class BarcodeScannerWithZoom extends StatefulWidget {
 
 class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
   final MobileScannerController controller = MobileScannerController(
-    torchEnabled: true,
+    torchEnabled: false,
   );
 
   double _zoomFactor = 0.0;
@@ -67,6 +67,13 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
     );
   }
 
+  void _onDetect(BarcodeCapture capture) {
+    final barcode = capture.barcodes.first.rawValue;
+    if (barcode != null) {
+      Navigator.pop(context, barcode);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,6 +84,7 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
           MobileScanner(
             controller: controller,
             fit: BoxFit.contain,
+            onDetect: _onDetect,
             errorBuilder: (context, error, child) {
               return ScannerErrorWidget(error: error);
             },
@@ -115,9 +123,9 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
     );
   }
 
-  @override
-  Future<void> dispose() async {
-    super.dispose();
-    await controller.dispose();
-  }
+  // @override
+  // Future<void> dispose() async {
+  //   super.dispose();
+  //   await controller.dispose();
+  // }
 }

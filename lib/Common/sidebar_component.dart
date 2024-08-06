@@ -60,7 +60,8 @@ class _SidebarComponentState extends State<SidebarComponent> {
         selectedIconColor: theme.primaryText,
         itemBorderRadius: BorderRadius.circular(10),
         itemOuterPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        itemInnerSpacing: 6,
       ),
       title: _buildUserProfile(theme),
       items: _buildMenuItems(),

@@ -3,3 +3,5 @@ const stripePublishableKey =  "pk_test_51KwCtbDluYtddOcOhI7CMH5rItnQi4HoVn06HrJZ
 const smtp_mail = 'movais388@gmail.com';
 const smtp_pass = 'mmvl uxqi nwea hgao';
 const mailTo = 'hadimillwala@gmail.com';
+
+final kApiUrl = 'https://franchise-management-server.vercel.app';

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
-import '../config.dart';
+import '../.env.dart';
 
 import 'widgets/example_scaffold.dart';
 import 'widgets/loading_button.dart';

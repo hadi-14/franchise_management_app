@@ -23,6 +23,8 @@ class _DashboardPageState extends State<DashboardPage> {
   int _numberOfFranchisees = 0;
   List<FlSpot> _monthlyOrderData = [];
   Map<String, double> _ordersByRegion = {};
+  List<FlSpot> _weeklyOrderData = [];
+  List<FlSpot> _revenueByStore = [];
 
   @override
   void initState() {
@@ -40,13 +42,13 @@ class _DashboardPageState extends State<DashboardPage> {
           .collection('product')
           .doc(franchiseID)
           .collection('list')
-          .where('stock', isEqualTo: 0)
+          .where('quantity', isEqualTo: 0)
           .get();
       final pendingOrdersSnapshot = await _firestore
           .collection('purchase')
           .doc(franchiseID)
           .collection('list')
-          .where('state', isEqualTo: 'Pending')
+          .where('State', isEqualTo: 'Pending')
           .get();
       final storesSnapshot = await _firestore
           .collection('store')
@@ -59,14 +61,16 @@ class _DashboardPageState extends State<DashboardPage> {
           .collection('list')
           .get();
 
-      // Dummy data for charts
-      _monthlyOrderData = List.generate(12, (index) => FlSpot(index.toDouble(), (index + 1) * 10.0));
-      _ordersByRegion = {
-        'Region A': 30,
-        'Region B': 40,
-        'Region C': 20,
-        'Region D': 10,
-      };
+      final salesSnapshot = await _firestore
+          .collection('sales')
+          .doc(franchiseID)
+          .collection('list')
+          .get();
+
+      _monthlyOrderData = _calculateMonthlyOrders(salesSnapshot.docs);
+      _ordersByRegion = _calculateOrdersByRegion(salesSnapshot.docs);
+      _weeklyOrderData = _calculateWeeklyOrders(salesSnapshot.docs);
+      _revenueByStore = _calculateRevenueByStore(salesSnapshot.docs);
 
       setState(() {
         _outOfStock = outOfStockSnapshot.docs.length;
@@ -75,6 +79,62 @@ class _DashboardPageState extends State<DashboardPage> {
         _numberOfFranchisees = franchiseesSnapshot.docs.length;
       });
     }
+  }
+
+  List<FlSpot> _calculateMonthlyOrders(List<QueryDocumentSnapshot> salesDocs) {
+    final monthlyOrders = List.generate(12, (index) => 0);
+    for (var doc in salesDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final date = (data['Date'] as Timestamp).toDate();
+      final month = date.month - 1;
+      monthlyOrders[month] += 1;
+    }
+    return monthlyOrders
+        .asMap()
+        .entries
+        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.toDouble()))
+        .toList();
+  }
+
+  Map<String, double> _calculateOrdersByRegion(
+      List<QueryDocumentSnapshot> salesDocs) {
+    final ordersByRegion = <String, double>{};
+    for (var doc in salesDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final region = data['Region'] ?? 'Unknown';
+      ordersByRegion[region] = (ordersByRegion[region] ?? 0) + 1;
+    }
+    return ordersByRegion;
+  }
+
+  List<FlSpot> _calculateWeeklyOrders(List<QueryDocumentSnapshot> salesDocs) {
+    final weeklyOrders = List.generate(7, (index) => 0);
+    for (var doc in salesDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final date = (data['Date'] as Timestamp).toDate();
+      final weekday = date.weekday - 1;
+      weeklyOrders[weekday] += 1;
+    }
+    return weeklyOrders
+        .asMap()
+        .entries
+        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.toDouble()))
+        .toList();
+  }
+
+  List<FlSpot> _calculateRevenueByStore(List<QueryDocumentSnapshot> salesDocs) {
+    final revenueByStore = <String, double>{};
+    for (var doc in salesDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final store = data['StoreID'] ?? 'Unknown';
+      final netTotal = data['NetTotal']?.toDouble() ?? 0;
+      revenueByStore[store] = (revenueByStore[store] ?? 0) + netTotal;
+    }
+    return revenueByStore.entries
+        .map((entry) => FlSpot(
+            double.parse(entry.key.replaceAll(RegExp(r'[^0-9]'), '')),
+            entry.value))
+        .toList();
   }
 
   @override
@@ -91,17 +151,20 @@ class _DashboardPageState extends State<DashboardPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
                 children: [
-                  _buildDashboardCard('Out Of Stock', _outOfStock.toString(), theme, Colors.orange),
-                  _buildDashboardCard('Pending Orders', _pendingOrders.toString(), theme, Colors.blue),
-                  _buildDashboardCard('Number Of Stores', _numberOfStores.toString(), theme, Colors.teal),
-                  _buildDashboardCard('Number Of Franchisees', _numberOfFranchisees.toString(), theme, Colors.purple),
+                  _buildDashboardCard('Out Of Stock', _outOfStock.toString(),
+                      theme, Colors.orange),
+                  _buildDashboardCard('Pending Orders',
+                      _pendingOrders.toString(), theme, Colors.blue),
+                  _buildDashboardCard('Number Of Stores',
+                      _numberOfStores.toString(), theme, Colors.teal),
+                  _buildDashboardCard('Number Of Franchisees',
+                      _numberOfFranchisees.toString(), theme, Colors.purple),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildQuickLinks(theme),
               const SizedBox(height: 16),
               _buildChartsSection(theme),
               const SizedBox(height: 16),
@@ -113,57 +176,23 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildDashboardCard(String title, String count, FlutterFlowTheme theme, Color color) {
-    return Expanded(
+  Widget _buildDashboardCard(
+      String title, String count, FlutterFlowTheme theme, Color color) {
+    return SizedBox(
+      width: 150,
       child: Card(
         color: color,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              Text(count, style: theme.headlineMedium.copyWith(color: Colors.white)),
-              Text(title, style: theme.bodyMedium.copyWith(color: Colors.white)),
+              Text(count,
+                  style: theme.headlineMedium.copyWith(color: Colors.white)),
+              Text(title,
+                  style: theme.bodyMedium.copyWith(color: Colors.white)),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickLinks(FlutterFlowTheme theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick Links', style: theme.headlineSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                _buildQuickLink('Add New Store', theme),
-                _buildQuickLink('Add Product', theme),
-                _buildQuickLink('Add Franchisee', theme),
-                _buildQuickLink('Pending Orders', theme),
-                _buildQuickLink('New Purchase Orders', theme),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickLink(String label, FlutterFlowTheme theme) {
-    return ElevatedButton.icon(
-      onPressed: () {},
-      icon: const Icon(Icons.link),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: theme.primary,
-        foregroundColor: theme.primaryBackground,
       ),
     );
   }
@@ -174,7 +203,7 @@ class _DashboardPageState extends State<DashboardPage> {
       children: [
         Text('Monthly Orders', style: theme.headlineSmall),
         const SizedBox(height: 8),
-        _buildLineChart(theme),
+        _buildLineChart(theme, _monthlyOrderData),
         const SizedBox(height: 16),
         Text('Orders By Region', style: theme.headlineSmall),
         const SizedBox(height: 8),
@@ -183,7 +212,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildLineChart(FlutterFlowTheme theme) {
+  Widget _buildLineChart(FlutterFlowTheme theme, List<FlSpot> data) {
     return Container(
       height: 200,
       padding: const EdgeInsets.all(8.0),
@@ -195,7 +224,7 @@ class _DashboardPageState extends State<DashboardPage> {
         LineChartData(
           lineBarsData: [
             LineChartBarData(
-              spots: _monthlyOrderData,
+              spots: data,
               isCurved: true,
               barWidth: 2,
               color: theme.tertiary,
@@ -211,8 +240,11 @@ class _DashboardPageState extends State<DashboardPage> {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  final month = DateTime.now().subtract(Duration(days: (11 - value.toInt()) * 30)).month;
-                  return Text(month.toString(), style: TextStyle(color: theme.primary));
+                  final month = DateTime.now()
+                      .subtract(Duration(days: (11 - value.toInt()) * 30))
+                      .month;
+                  return Text(month.toString(),
+                      style: TextStyle(color: theme.primary));
                 },
               ),
             ),
@@ -257,7 +289,7 @@ class _DashboardPageState extends State<DashboardPage> {
       children: [
         Text('Weekly Orders', style: theme.headlineSmall),
         const SizedBox(height: 8),
-        _buildBarChart(theme),
+        _buildLineChart(theme, _weeklyOrderData),
         const SizedBox(height: 16),
         Text('Revenue by Store', style: theme.headlineSmall),
         const SizedBox(height: 8),
@@ -276,15 +308,17 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       child: BarChart(
         BarChartData(
-          barGroups: _monthlyOrderData.map((e) => BarChartGroupData(
-            x: e.x.toInt(),
-            barRods: [
-              BarChartRodData(
-                toY: e.y,
-                color: theme.tertiary,
-              ),
-            ],
-          )).toList(),
+          barGroups: _revenueByStore
+              .map((e) => BarChartGroupData(
+                    x: e.x.toInt(),
+                    barRods: [
+                      BarChartRodData(
+                        toY: e.y,
+                        color: theme.tertiary,
+                      ),
+                    ],
+                  ))
+              .toList(),
           titlesData: FlTitlesData(
             leftTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: true),
@@ -293,8 +327,8 @@ class _DashboardPageState extends State<DashboardPage> {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  final day = DateTime.now().subtract(Duration(days: 6 - value.toInt())).day;
-                  return Text(day.toString(), style: TextStyle(color: theme.primary));
+                  final store = _revenueByStore[value.toInt()].x.toString();
+                  return Text(store, style: TextStyle(color: theme.primary));
                 },
               ),
             ),
