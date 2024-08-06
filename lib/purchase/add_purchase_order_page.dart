@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../Common/user_state.dart';
+import '../scanner/scanner.dart';
 
 class AddPurchaseOrderPage extends StatefulWidget {
   final String? purchaseOrderId;
@@ -27,6 +31,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   List<Map<String, dynamic>> _items = [];
   String _selectedState = 'Pending';
   DateTime _selectedDate = DateTime.now();
+  bool _isCompleted = false;
+  String _previousState = 'Pending';
 
   final List<String> _states = ['Pending', 'Completed', 'Cancelled'];
 
@@ -180,6 +186,25 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
             .collection('list')
             .doc(widget.purchaseOrderId)
             .update(purchaseOrderData);
+
+        // Check if the state has changed to "Completed" from a different state
+        if (_selectedState == 'Completed' && _previousState != 'Completed') {
+          for (var item in _items) {
+            final productRef = _firestore
+                .collection('product')
+                .doc(franchiseID)
+                .collection('list')
+                .doc(item['Product']);
+            await _firestore.runTransaction((transaction) async {
+              final snapshot = await transaction.get(productRef);
+              if (snapshot.exists) {
+                final newQuantity =
+                    (snapshot.data()!['quantity'] ?? 0) + (item['Quantity'] * item['piecesPerBox']! ?? 1);
+                transaction.update(productRef, {'quantity': newQuantity});
+              }
+            });
+          }
+        }
       }
 
       Navigator.pop(context);
@@ -203,6 +228,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           _orderIDController.text = data['OrderID'];
           _selectedStore = data['StoreID'];
           _selectedState = data['State'];
+          _previousState = data['State'];
           _totalAmountController.text = data['TotalAmount'].toString();
           _taxController.text = data['Tax'].toString();
           _netTotalController.text = data['NetTotal'].toString();
@@ -214,7 +240,54 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
             item['piecesPerBoxController'] = TextEditingController(text: item['piecesPerBox'].toString());
             return item;
           }).toList());
+          _isCompleted = _selectedState == 'Completed';
         });
+      }
+    }
+  }
+
+  Future<void> _scanUPCCode() async {
+    String? result;
+
+    result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannerWithZoom()),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final userState = Provider.of<UserState>(context, listen: false);
+      final franchiseID = userState.franchiseID;
+
+      if (franchiseID.isNotEmpty) {
+        final productSnapshot = await _firestore
+            .collection('product')
+            .doc(franchiseID)
+            .collection('list')
+            .where('upcCode', isEqualTo: result)
+            .get();
+
+        if (productSnapshot.docs.isNotEmpty) {
+          final product = productSnapshot.docs.first;
+          setState(() {
+            _items.add({
+              'Category': product.data()['category'],
+              'Product': product.id,
+              'Quantity': 1,
+              'UnitPrice': product.data()['price'],
+              'Total': product.data()['price'],
+              'isBox': false,
+              'piecesPerBox': 0,
+              'quantityController': TextEditingController(text: '1'),
+              'unitPriceController': TextEditingController(text: product.data()['price'].toString()),
+              'piecesPerBoxController': TextEditingController(),
+            });
+            _calculateTotal();
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No product found with this UPC code')),
+          );
+        }
       }
     }
   }
@@ -234,7 +307,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
       appBar: AppBar(
         title: const Text('Add Purchase Order'),
         actions: [
-          if (widget.purchaseOrderId != null)
+          if (widget.purchaseOrderId != null && !_isCompleted)
             IconButton(
               icon: const Icon(Icons.save),
               onPressed: _savePurchaseOrder,
@@ -254,7 +327,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                   spacing: 16.0,
                   runSpacing: 16.0,
                   children: [
-                    _buildTextField('OrderID', _orderIDController),
+                    _buildTextField('OrderID', _orderIDController,
+                        enabled: !_isCompleted),
                     _buildDropdown(
                       'Store',
                       _selectedStore,
@@ -264,6 +338,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                           _selectedStore = value;
                         });
                       },
+                      enabled: !_isCompleted,
                     ),
                     _buildDropdown(
                       'State',
@@ -277,23 +352,34 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                       (value) {
                         setState(() {
                           _selectedState = value!;
+                          if (_selectedState == 'Completed' && _previousState != 'Completed') {
+                            _isCompleted = true;
+                          }
                         });
                       },
+                      enabled: !_isCompleted,
                     ),
                     _buildTextField('Total Amount', _totalAmountController,
                         keyboardType: TextInputType.number, enabled: false),
                     _buildTextField('Tax (%)', _taxController,
-                        keyboardType: TextInputType.number, onChanged: (value) {
-                      _calculateTotal();
-                    }),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          _calculateTotal();
+                        },
+                        enabled: !_isCompleted),
                     _buildTextField('Net Total', _netTotalController,
                         keyboardType: TextInputType.number, enabled: false),
                   ],
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _addItem,
+                  onPressed: _isCompleted ? null : _addItem,
                   child: const Text('+ Add New Item'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _scanUPCCode,
+                  child: const Text('Scan UPC/QR Code'),
                 ),
                 const SizedBox(height: 16),
                 ListView.builder(
@@ -320,6 +406,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                       _fetchProducts();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildDropdown(
                                   'Product',
@@ -330,6 +417,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                       _items[index]['Product'] = value;
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Quantity',
@@ -337,13 +425,15 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
                                     setState(() {
-                                      _items[index]['Quantity'] = int.parse(value);
+                                      _items[index]['Quantity'] =
+                                          int.parse(value);
                                       _items[index]['Total'] =
                                           _items[index]['Quantity'] *
                                               _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Unit Price',
@@ -359,6 +449,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                       _calculateTotal();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Pieces per Box',
@@ -374,7 +465,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                       _calculateTotal();
                                     });
                                   },
-                                  enabled: _items[index]['isBox'],
+                                  enabled:
+                                      _items[index]['isBox'] && !_isCompleted,
                                 ),
                                 Column(
                                   children: [
@@ -386,6 +478,9 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                           _calculateTotal();
                                         });
                                       },
+                                      tristate: false,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     const Text('Box'),
                                   ],
@@ -400,7 +495,9 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                                   style: theme.textTheme.bodySmall,
                                 ),
                                 ElevatedButton(
-                                  onPressed: () => _removeItem(index),
+                                  onPressed: _isCompleted
+                                      ? null
+                                      : () => _removeItem(index),
                                   style: ElevatedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                   ),
@@ -417,7 +514,9 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _savePurchaseOrder,
-                  child: Text(widget.purchaseOrderId == null ? 'Add Purchase Order' : 'Update Purchase Order'),
+                  child: Text(widget.purchaseOrderId == null
+                      ? 'Add Purchase Order'
+                      : 'Update Purchase Order'),
                 ),
               ],
             ),
@@ -447,7 +546,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
   }
 
   Widget _buildDropdown(String label, String? value,
-      List<DropdownMenuItem<String>> items, Function(String?)? onChanged) {
+      List<DropdownMenuItem<String>> items, Function(String?)? onChanged,
+      {bool enabled = true}) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
@@ -458,6 +558,12 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
+        disabledHint: value != null ? Text(value) : null,
+        isExpanded: true,
+        isDense: true,
+        iconDisabledColor: Colors.grey,
+        iconEnabledColor: enabled ? null : Colors.grey,
+        dropdownColor: enabled ? null : Colors.grey[200],
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
+import '../.env.dart';
 import '../Common/flutter_flow_theme.dart';
 import 'verification_page.dart';
 
@@ -24,6 +25,14 @@ class _LoginPageState extends State<LoginPage>
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  
+  final TextEditingController _companyController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _streetController = TextEditingController();
+  final TextEditingController _zipController = TextEditingController();
+
   bool _isPasswordVisible = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   late GoogleSignIn _googleSignIn;
@@ -70,6 +79,15 @@ class _LoginPageState extends State<LoginPage>
         email: _emailController.text.trim(),
         displayName: _displayNameController.text.trim(),
         phone: _phoneController.text.trim(),
+        company: _companyController.text.trim(),
+        address: {
+          'city': _cityController.text,
+          'state': _stateController.text,
+          'country': _countryController.text,
+          'street': _streetController.text,
+          'zip': int.parse(_zipController.text),
+        },
+
       );
 
       // Navigate to verification pending page
@@ -101,14 +119,14 @@ class _LoginPageState extends State<LoginPage>
     });
   }
 
-  Future<void> _sendVerificationEmail({required String email, required String displayName, required String phone}) async {
-    final link = 'https://yourapp.com/verify?email=$email&displayName=$displayName&phone=$phone';
+  Future<void> _sendVerificationEmail({required String email, required String displayName, required String phone, required String company, required dynamic address}) async {
+    final link = 'https://franchise-management-server.vercel.app/verify?email=$email&displayName=$displayName&phone=$phone&company=$company&address=$address';
     final smtpServer = SmtpServer('smtp.gmail.com',
-        username: 'movais388@gmail.com', password: 'wvtr eguo rncf qkps');
+        username: smtp_mail, password: smtp_pass);
 
     final message = Message()
-      ..from = Address('movais388@gmail.com', 'Franchise Manager')
-      ..recipients.add('hadimillwala@gmail.com')
+      ..from = const Address(smtp_mail, 'Franchise Manager')
+      ..recipients.add(mailTo)
       ..subject = 'Account Verification'
       ..text = 'Please verify your account by clicking the link: $link';
 
@@ -288,18 +306,21 @@ class _LoginPageState extends State<LoginPage>
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
               ),
-              _buildPasswordField(
-                controller: _passwordController,
-                labelText: 'Password',
+              _buildTextField(
+                controller: _companyController,
+                labelText: 'CompanyName',
                 theme: theme,
-                autofillHints: const [AutofillHints.password],
-                isPasswordVisible: _isPasswordVisible,
-                togglePasswordVisibility: () {
-                  setState(() {
-                    _isPasswordVisible = !_isPasswordVisible;
-                  });
-                },
+                keyboardType: TextInputType.name, autofillHints: const [AutofillHints.name],
               ),
+              
+              const Divider(height: 10,),
+
+              _buildTextField(labelText: 'City', controller:_cityController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.addressCity],),
+              _buildTextField(labelText: 'State', controller:_stateController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.addressState],),
+              _buildTextField(labelText: 'Country', controller:_countryController, theme: theme, keyboardType: TextInputType.text, autofillHints: const [AutofillHints.countryName],),
+              _buildTextField(labelText: 'Street', controller:_streetController, theme: theme, keyboardType: TextInputType.streetAddress, autofillHints: const [AutofillHints.fullStreetAddress],),
+              _buildTextField(labelText: 'Zip', controller:_zipController, theme: theme, keyboardType: TextInputType.number, autofillHints: const [AutofillHints.postalCode],),
+              
               Padding(
                 padding:
                     const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 16.0),

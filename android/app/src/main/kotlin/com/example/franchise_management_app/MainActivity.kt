@@ -1,4 +1,4 @@
-package com.datazeb.franchise
+package com.example.franchise_management_app
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterFragmentActivity

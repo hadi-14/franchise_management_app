@@ -23,12 +23,15 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
   final TextEditingController _totalAmountController = TextEditingController();
   final TextEditingController _taxController = TextEditingController();
   final TextEditingController _netTotalController = TextEditingController();
+  final TextEditingController _serviceFeeController = TextEditingController();
 
   List<DropdownMenuItem<String>> _categoryDropdownItems = [];
   List<DropdownMenuItem<String>> _productDropdownItems = [];
   List<Map<String, dynamic>> _items = [];
   String _selectedState = 'Request';
   DateTime _selectedDate = DateTime.now();
+  bool _isCompleted = false;
+  String _previousState = 'Request';
 
   final List<String> _states = ['Request', 'Pending', 'Completed', 'Cancelled'];
 
@@ -115,9 +118,11 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
       totalAmount += item['Total'];
     }
     double tax = double.tryParse(_taxController.text) ?? 0.0;
-    double netTotal = totalAmount + (totalAmount * tax / 100);
+    double serviceFee = totalAmount * 0.02;
+    double netTotal = totalAmount + (totalAmount * tax / 100) + serviceFee;
     setState(() {
       _totalAmountController.text = totalAmount.toStringAsFixed(2);
+      _serviceFeeController.text = serviceFee.toStringAsFixed(2);
       _netTotalController.text = netTotal.toStringAsFixed(2);
     });
   }
@@ -133,6 +138,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
         'State': _selectedState,
         'TotalAmount': double.parse(_totalAmountController.text),
         'Tax': double.parse(_taxController.text),
+        'ServiceFee': double.parse(_serviceFeeController.text),
         'NetTotal': double.parse(_netTotalController.text),
         'Date': _selectedDate,
         'createdBy': user.displayName,
@@ -160,15 +166,39 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
             .collection('list')
             .doc(widget.salesOrderId)
             .update(salesOrderData);
-      }
 
-      // Navigate to payment page after saving the sales order
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ((defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) ? PaymentSheetMobile() : PaymentElementWeb(amount: double.parse(_netTotalController.text))), //netTotal: double.parse(_netTotalController.text)
-        ),
-      );
+        // Check if the state has changed to "Completed" from a different state
+        if (_selectedState == 'Completed' && _previousState != 'Completed') {
+          for (var item in _items) {
+            final productRef = _firestore
+                .collection('product')
+                .doc(franchiseID)
+                .collection('list')
+                .doc(item['Product']);
+            await _firestore.runTransaction((transaction) async {
+              final snapshot = await transaction.get(productRef);
+              if (snapshot.exists) {
+                final newQuantity = (snapshot.data()!['quantity'] ?? 0) -
+                    (item['Quantity']);
+                transaction.update(productRef, {'quantity': newQuantity});
+              }
+            });
+          }
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ((defaultTargetPlatform ==
+                          TargetPlatform.android ||
+                      defaultTargetPlatform == TargetPlatform.iOS)
+                  ? const PaymentSheetMobile()
+                  : PaymentElementWeb(
+                      amount: double.parse(_netTotalController
+                          .text))), //netTotal: double.parse(_netTotalController.text)
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -188,17 +218,24 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
         setState(() {
           _orderIDController.text = data['OrderID'];
           _selectedState = data['State'];
+          _previousState = data['State'];
           _totalAmountController.text = data['TotalAmount'].toString();
           _taxController.text = data['Tax'].toString();
+          _serviceFeeController.text = data['ServiceFee'].toString();
           _netTotalController.text = data['NetTotal'].toString();
           _selectedDate = (data['Date'] as Timestamp).toDate();
           _items.clear();
-          _items.addAll(List<Map<String, dynamic>>.from(data['items']).map((item) {
-            item['quantityController'] = TextEditingController(text: item['Quantity'].toString());
-            item['unitPriceController'] = TextEditingController(text: item['UnitPrice'].toString());
-            item['piecesPerBoxController'] = TextEditingController(text: item['piecesPerBox'].toString());
+          _items.addAll(
+              List<Map<String, dynamic>>.from(data['items']).map((item) {
+            item['quantityController'] =
+                TextEditingController(text: item['Quantity'].toString());
+            item['unitPriceController'] =
+                TextEditingController(text: item['UnitPrice'].toString());
+            item['piecesPerBoxController'] =
+                TextEditingController(text: item['piecesPerBox'].toString());
             return item;
           }).toList());
+          _isCompleted = _selectedState == 'Completed';
         });
       }
     }
@@ -219,7 +256,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
       appBar: AppBar(
         title: const Text('Add Sales Order'),
         actions: [
-          if (widget.salesOrderId != null)
+          if (widget.salesOrderId != null && !_isCompleted)
             IconButton(
               icon: const Icon(Icons.save),
               onPressed: _saveSalesOrder,
@@ -239,7 +276,8 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                   spacing: 16.0,
                   runSpacing: 16.0,
                   children: [
-                    _buildTextField('OrderID', _orderIDController),
+                    _buildTextField('OrderID', _orderIDController,
+                        enabled: !_isCompleted),
                     _buildDropdown(
                       'State',
                       _selectedState,
@@ -252,22 +290,34 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                       (value) {
                         setState(() {
                           _selectedState = value!;
+                          if (_selectedState == 'Completed' &&
+                              _previousState != 'Completed') {
+                            _isCompleted = true;
+                          }
                         });
                       },
+                      enabled: !_isCompleted,
                     ),
                     _buildTextField('Total Amount', _totalAmountController,
                         keyboardType: TextInputType.number, enabled: false),
                     _buildTextField('Tax (%)', _taxController,
                         keyboardType: TextInputType.number, onChanged: (value) {
                       _calculateTotal();
-                    }),
+                    }, enabled: !_isCompleted),
+                    _buildTextField('Service Fee', _serviceFeeController,
+                        keyboardType: TextInputType.number, enabled: false),
                     _buildTextField('Net Total', _netTotalController,
                         keyboardType: TextInputType.number, enabled: false),
                   ],
                 ),
                 const SizedBox(height: 16),
+                Text(
+                  'A service fee of 2% is applied.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _addItem,
+                  onPressed: _isCompleted ? null : _addItem,
                   child: const Text('+ Add New Item'),
                 ),
                 const SizedBox(height: 16),
@@ -295,6 +345,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                       _fetchProducts();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildDropdown(
                                   'Product',
@@ -305,6 +356,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                       _items[index]['Product'] = value;
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Quantity',
@@ -312,13 +364,15 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) {
                                     setState(() {
-                                      _items[index]['Quantity'] = int.parse(value);
-                                      _items[index]['Total'] =
-                                          _items[index]['Quantity'] *
-                                              _items[index]['UnitPrice'];
+                                      _items[index]['Quantity'] =
+                                          int.parse(value);
+                                      _items[index]['Total'] = _items[index]
+                                              ['Quantity'] *
+                                          _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Unit Price',
@@ -328,12 +382,13 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                     setState(() {
                                       _items[index]['UnitPrice'] =
                                           double.parse(value);
-                                      _items[index]['Total'] =
-                                          _items[index]['Quantity'] *
-                                              _items[index]['UnitPrice'];
+                                      _items[index]['Total'] = _items[index]
+                                              ['Quantity'] *
+                                          _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
                                   },
+                                  enabled: !_isCompleted,
                                 ),
                                 _buildTextField(
                                   'Pieces per Box',
@@ -344,12 +399,13 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                       _items[index]['piecesPerBox'] =
                                           int.parse(value);
                                       _items[index]['Total'] = _items[index]
-                                                  ['Quantity'] *
-                                              _items[index]['UnitPrice'];
+                                              ['Quantity'] *
+                                          _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
                                   },
-                                  enabled: _items[index]['isBox'],
+                                  enabled:
+                                      _items[index]['isBox'] && !_isCompleted,
                                 ),
                                 Column(
                                   children: [
@@ -361,6 +417,9 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                           _calculateTotal();
                                         });
                                       },
+                                      tristate: false,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     const Text('Box'),
                                   ],
@@ -375,7 +434,9 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                                   style: theme.textTheme.bodySmall,
                                 ),
                                 ElevatedButton(
-                                  onPressed: () => _removeItem(index),
+                                  onPressed: _isCompleted
+                                      ? null
+                                      : () => _removeItem(index),
                                   style: ElevatedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                   ),
@@ -392,7 +453,9 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _saveSalesOrder,
-                  child: Text(widget.salesOrderId == null ? 'Add Sales Order' : 'Update Sales Order'),
+                  child: Text(widget.salesOrderId == null
+                      ? 'Add Sales Order'
+                      : 'Update Sales Order'),
                 ),
               ],
             ),
@@ -422,7 +485,8 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
   }
 
   Widget _buildDropdown(String label, String? value,
-      List<DropdownMenuItem<String>> items, Function(String?)? onChanged) {
+      List<DropdownMenuItem<String>> items, Function(String?)? onChanged,
+      {bool enabled = true}) {
     return SizedBox(
       width: 300,
       child: DropdownButtonFormField<String>(
@@ -433,6 +497,12 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
+        disabledHint: value != null ? Text(value) : null,
+        isExpanded: true,
+        isDense: true,
+        iconDisabledColor: Colors.grey,
+        iconEnabledColor: enabled ? null : Colors.grey,
+        dropdownColor: enabled ? null : Colors.grey[200],
       ),
     );
   }

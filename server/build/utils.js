@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateResponse = void 0;
-var generateResponse = function (intent) {
+const generateResponse = (intent) => {
     // Generate a response based on the intent's status
     switch (intent.status) {
         case 'requires_action':
