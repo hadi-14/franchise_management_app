@@ -64,6 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1018649504290',
     projectId: 'franchise-management-ea496',
     storageBucket: 'franchise-management-ea496.appspot.com',
+    androidClientId: '1018649504290-mkmperpqgp59q49bpkt45142mukv5vea.apps.googleusercontent.com',
     iosClientId: '1018649504290-eiciltjucgrije81dsbj5tpa39bf4qqc.apps.googleusercontent.com',
     iosBundleId: 'com.example.franchiseManagementApp',
   );
@@ -74,6 +75,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1018649504290',
     projectId: 'franchise-management-ea496',
     storageBucket: 'franchise-management-ea496.appspot.com',
+    androidClientId: '1018649504290-mkmperpqgp59q49bpkt45142mukv5vea.apps.googleusercontent.com',
     iosClientId: '1018649504290-eiciltjucgrije81dsbj5tpa39bf4qqc.apps.googleusercontent.com',
     iosBundleId: 'com.example.franchiseManagementApp',
   );

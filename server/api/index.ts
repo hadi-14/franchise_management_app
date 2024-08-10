@@ -1,5 +1,6 @@
 // Server code from https://github.com/stripe-samples/accept-a-card-payment/tree/master/using-webhooks/server/node-typescript
 
+import nodemailer from 'nodemailer';
 import env from 'dotenv';
 // Replace if using a different env file or config.
 env.config({ path: './.env' });
@@ -17,6 +18,8 @@ import path from 'path';
 const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const smtp_mail = process.env.SMTP_MAIL;
+const smtp_pass = process.env.SMTP_PASS;
 
 const app = express();
 
@@ -162,6 +165,39 @@ app.post('/approve', async (req, res) => {
   } catch (error) {
     console.error('Error approving user:', error);
     res.status(500).send('Internal Server Error');
+  }
+});
+
+app.post('/send-verification-email', async (req, res) => {
+  const { email, displayName, phone, company, address } = req.body;
+
+  if (!email || !displayName || !phone || !company || !address) {
+    return res.status(400).send('All fields are required');
+  }
+
+  const link = `https://franchise-management-server.vercel.app/verify?email=${encodeURIComponent(email)}&name=${encodeURIComponent(displayName)}&phone=${encodeURIComponent(phone)}&company=${encodeURIComponent(company)}&address=${encodeURIComponent(JSON.stringify(address))}`;
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: smtp_mail,
+      pass: smtp_pass,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Franchise Manager" <${smtp_mail}>`,
+    to: email,
+    subject: 'Account Verification',
+    text: `Please verify your account by clicking the link: ${link}`,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).send('Verification email sent successfully');
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).send('Error sending email');
   }
 });
 

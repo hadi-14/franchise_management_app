@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1018649504290",
+    "project_id": "franchise-management-ea496",
+    "storage_bucket": "franchise-management-ea496.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018649504290:android:0043f6f52822d04e1f387b",
+        "android_client_info": {
+          "package_name": "com.datazeb.franchise"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1018649504290-mkmperpqgp59q49bpkt45142mukv5vea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.datazeb.franchise",
+            "certificate_hash": "e96e81417b28978d723e1e1028131e63c2c0af5f"
+          }
+        },
+        {
+          "client_id": "1018649504290-9sk31otsj5r3ev4ceib8qs66qklr14oi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATpaWh4e4W_wyROUglwtfUFspxmaZJM0k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1018649504290-9sk31otsj5r3ev4ceib8qs66qklr14oi.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1018649504290-eiciltjucgrije81dsbj5tpa39bf4qqc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.franchiseManagementApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

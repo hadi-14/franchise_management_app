@@ -18,18 +18,36 @@ class _ProductsPageState extends State<ProductsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PagedDataTableController<String, DocumentSnapshot>
-      _pagedDataTableController = PagedDataTableController();
+  _pagedDataTableController = PagedDataTableController();
 
-  String? _selectedCategory;
+  String? _selectedCategoryID;
+  Map<String, String> _categories = {};
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_filterProducts);
+    _fetchCategories();
   }
 
   void _filterProducts() {
-    _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
+    _pagedDataTableController.refresh();
+  }
+
+  Future<void> _fetchCategories() async {
+    if (widget.franchiseID.isEmpty) return;
+
+    final snapshot = await _firestore
+        .collection('product')
+        .doc(widget.franchiseID)
+        .collection('category')
+        .get();
+
+    setState(() {
+      _categories = {
+        for (var doc in snapshot.docs) doc.id: doc['name'] as String,
+      };
+    });
   }
 
   Future<(List<DocumentSnapshot>, String?)> _fetchProducts(int pageSize,
@@ -44,12 +62,12 @@ class _ProductsPageState extends State<ProductsPage> {
       query = query
           .where('productName', isGreaterThanOrEqualTo: _searchController.text)
           .where('productName',
-              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+          isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
     // Apply category filter
-    if (_selectedCategory != null) {
-      query = query.where('category', isEqualTo: _selectedCategory);
+    if (_selectedCategoryID != null) {
+      query = query.where('categoryID', isEqualTo: _selectedCategoryID);
     }
 
     // Apply pagination
@@ -64,21 +82,9 @@ class _ProductsPageState extends State<ProductsPage> {
 
     final snapshot = await query.limit(pageSize).get();
     final nextPageToken =
-        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
+    snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
 
     return (snapshot.docs, nextPageToken);
-  }
-
-  Future<List<String>> _fetchCategories() async {
-    if (widget.franchiseID.isEmpty) {
-      return [];
-    }
-    final snapshot = await _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('category')
-        .get();
-    return snapshot.docs.map((doc) => doc['name'] as String).toList();
   }
 
   @override
@@ -120,39 +126,27 @@ class _ProductsPageState extends State<ProductsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            FutureBuilder<List<String>>(
-              future: _fetchCategories(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Text('No categories available.');
-                } else {
-                  return SizedBox(
-                    width: MediaQuery.of(context).size.width,
-                    child: DropdownButton<String>(
-                      borderRadius: BorderRadius.circular(12.0),
-                      value: _selectedCategory,
-                      hint: const Text('Select Category'),
-                      items: snapshot.data!
-                          .map((category) => DropdownMenuItem(
-                                value: category,
-                                child: Text(category),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value;
-                          _pagedDataTableController.refresh();
-                        });
-                      },
-                    ),
-                  );
-                }
-              },
-            ),
+            if (_categories.isNotEmpty)
+              SizedBox(
+                width: MediaQuery.of(context).size.width,
+                child: DropdownButton<String>(
+                  borderRadius: BorderRadius.circular(12.0),
+                  value: _selectedCategoryID,
+                  hint: const Text('Select Category'),
+                  items: _categories.entries
+                      .map((entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategoryID = value;
+                      _pagedDataTableController.refresh();
+                    });
+                  },
+                ),
+              ),
             const SizedBox(height: 16),
             Expanded(
               child: SingleChildScrollView(
@@ -207,9 +201,11 @@ class _ProductsPageState extends State<ProductsPage> {
                         title: const Text("Category"),
                         cellBuilder: (context, item, index) {
                           final data = item.data() as Map<String, dynamic>;
-                          return Text(data['category']);
+                          final categoryName =
+                              _categories[data['categoryID']] ?? 'Unknown';
+                          return Text(categoryName);
                         },
-                        id: 'category',
+                        id: 'categoryID',
                         sortable: true,
                         size: const FractionalColumnSize(0.1),
                       ),
@@ -265,7 +261,11 @@ class _ProductsPageState extends State<ProductsPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductDetailsPage(productDoc: productDoc),
+        builder: (context) => ProductDetailsPage(
+          productDoc: productDoc,
+          categories: _categories,
+          franchiseID: widget.franchiseID,
+        ),
       ),
     );
     _pagedDataTableController.refresh();
@@ -306,20 +306,23 @@ class _ProductsPageState extends State<ProductsPage> {
 
 class ProductDetailsPage extends StatefulWidget {
   final DocumentSnapshot? productDoc;
+  final Map<String, String> categories;
+  final String franchiseID;
 
-  const ProductDetailsPage({super.key, this.productDoc});
+  const ProductDetailsPage(
+      {super.key, this.productDoc, required this.categories, required this.franchiseID});
 
   @override
   _ProductDetailsPageState createState() => _ProductDetailsPageState();
 }
 
-class _ProductDetailsPageState extends State<ProductDetailsPage>{
+class _ProductDetailsPageState extends State<ProductDetailsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _productNameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _upcCodeController = TextEditingController();
-  String? _selectedCategory;
+  String? _selectedCategoryID;
 
   @override
   void initState() {
@@ -330,24 +333,24 @@ class _ProductDetailsPageState extends State<ProductDetailsPage>{
       _priceController.text = data['price'].toString();
       _quantityController.text = data['quantity'].toString();
       _upcCodeController.text = data['upcCode'].toString();
-      _selectedCategory = data['category'];
+      _selectedCategoryID = data['categoryID'];
     }
   }
 
-  Future<void> _saveProduct(String franchiseID) async {
+  Future<void> _saveProduct() async {
     final productData = {
       'productName': _productNameController.text,
       'price': double.parse(_priceController.text),
       'quantity': int.parse(_quantityController.text),
       'upcCode': _upcCodeController.text,
-      'category': _selectedCategory,
+      'categoryID': _selectedCategoryID,
     };
 
     if (widget.productDoc == null) {
-      final productID = await _getNextProductID(franchiseID);
+      final productID = await _getNextProductID();
       await _firestore
           .collection('product')
-          .doc(franchiseID)
+          .doc(widget.franchiseID)
           .collection('list')
           .add({
         'productID': productID,
@@ -356,7 +359,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage>{
     } else {
       await _firestore
           .collection('product')
-          .doc(franchiseID)
+          .doc(widget.franchiseID)
           .collection('list')
           .doc(widget.productDoc!.id)
           .update(productData);
@@ -364,10 +367,10 @@ class _ProductDetailsPageState extends State<ProductDetailsPage>{
     Navigator.pop(context);
   }
 
-  Future<String> _getNextProductID(String franchiseID) async {
+  Future<String> _getNextProductID() async {
     final snapshot = await _firestore
         .collection('product')
-        .doc(franchiseID)
+        .doc(widget.franchiseID)
         .collection('list')
         .orderBy('productID', descending: true)
         .limit(1)
@@ -379,19 +382,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage>{
     return '1';
   }
 
-  Future<List<String>> _fetchCategories(String franchiseID) async {
-    final snapshot = await _firestore
-        .collection('product')
-        .doc(franchiseID)
-        .collection('category')
-        .get();
-    return snapshot.docs.map((doc) => doc['name'] as String).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
-    final userState = Provider.of<UserState>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -411,41 +404,25 @@ class _ProductDetailsPageState extends State<ProductDetailsPage>{
                   isNumeric: true),
               _buildTextField('UPC Code', _upcCodeController, theme),
               const SizedBox(height: 16),
-              FutureBuilder<List<String>>(
-                future: _fetchCategories(userState.franchiseID),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Text('No categories available.');
-                  } else {
-                    return SizedBox(
-                      width: MediaQuery.of(context).size.width,
-                      child: DropdownButton<String>(
-                        borderRadius: BorderRadius.circular(12.0),
-                        value: _selectedCategory,
-                        hint: const Text('Select Category'),
-                        items: snapshot.data!
-                            .map((category) => DropdownMenuItem(
-                                  value: category,
-                                  child: Text(category),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value;
-                          });
-                        },
-                      ),
-                    );
-                  }
+              DropdownButton<String>(
+                borderRadius: BorderRadius.circular(12.0),
+                value: _selectedCategoryID,
+                hint: const Text('Select Category'),
+                items: widget.categories.entries
+                    .map((entry) => DropdownMenuItem(
+                  value: entry.key,
+                  child: Text(entry.value),
+                ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategoryID = value;
+                  });
                 },
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => _saveProduct(userState.franchiseID),
+                onPressed: _saveProduct,
                 child: Text(widget.productDoc == null
                     ? 'Add Product'
                     : 'Update Product'),

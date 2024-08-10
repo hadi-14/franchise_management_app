@@ -62,7 +62,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       await _firestore.collection('user').doc(user.uid).set({
         'Company': _companyNameController.text,
         'Website': _websiteController.text,
-      });
+      }, SetOptions(merge: true));
     }
   }
 
@@ -181,6 +181,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = _auth.currentUser;
     final theme = FlutterFlowTheme.of(context);
 
     return Scaffold(
@@ -232,11 +233,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (user != null) ...[
+                Text('Email: ${user.email}', style: theme.bodyLarge),
+                const SizedBox(height: 8),
+                _buildTextField('Display Name', _usernameController, theme),
+                const SizedBox(height: 8),
+                Text('Phone: ${user.phoneNumber ?? 'Not Provided'}', style: theme.bodyLarge),
+                const SizedBox(height: 8),
+              ],
+              const Divider(),
               _buildTextField('Company Name', _companyNameController, theme),
               _buildTextField('Website', _websiteController, theme),
-              const Divider(),
-              _buildTextField('Username', _usernameController, theme),
-              _buildTextField('Phone', _phoneController, theme),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _verifyPhoneNumber,
@@ -340,9 +347,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   Widget _buildInvitedUsersTable() {
     return FutureBuilder<QuerySnapshot>(
       future: _firestore.collection('user')
-        .where('franchiseID', isEqualTo: widget.franchiseID)
-        .where('role', isNotEqualTo: 'owner') // Assuming 'owner' is the role for the franchise owner
-        .get(),
+          .where('franchiseID', isEqualTo: widget.franchiseID)
+          .where('role', isNotEqualTo: 'owner') // Assuming 'owner' is the role for the franchise owner
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
@@ -137,22 +137,45 @@ class _LoginPageState extends State<LoginPage>
     required String company,
     required Map<String, dynamic> address,
   }) async {
-    final link =
-        'https://franchise-management-server.vercel.app/verify?email=$email&name=$displayName&phone=$phone&company=$company&address=${json.encode(address)}';
-    final smtpServer =
-        SmtpServer('smtp.gmail.com', username: smtp_mail, password: smtp_pass);
+    if (defaultTargetPlatform == TargetPlatform.windows){
+      final response = await http.post(
+        Uri.parse(kApiUrl),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode({
+          'email': email,
+          'displayName': displayName,
+          'phone': phone,
+          'company': company,
+          'address': address,
+        }),
+      );
 
-    final message = Message()
-      ..from = const Address(smtp_mail, 'Franchise Manager')
-      ..recipients.add(mailTo)
-      ..subject = 'Account Verification'
-      ..text = 'Please verify your account by clicking the link: $link';
+      if (response.statusCode == 200) {
+        print('Verification email sent successfully via API');
+      } else {
+        print(
+            'Failed to send verification email via API: ${response.statusCode}');
+      }
+    } else {
+      final link =
+          '$kApiUrl/verify?email=$email&name=$displayName&phone=$phone&company=$company&address=${json.encode(address)}';
+      final smtpServer =
+      SmtpServer('smtp.gmail.com', username: smtp_mail, password: smtp_pass);
 
-    try {
-      final sendReport = await send(message, smtpServer);
-      print('Message sent: ' + sendReport.toString());
-    } on MailerException catch (e) {
-      print('Message not sent. \n' + e.toString());
+      final message = Message()
+        ..from = const Address(smtp_mail, 'Franchise Manager')
+        ..recipients.add(mailTo)
+        ..subject = 'Account Verification'
+        ..text = 'Please verify your account by clicking the link: $link';
+
+      try {
+        final sendReport = await send(message, smtpServer);
+        print('Message sent: ' + sendReport.toString());
+      } on MailerException catch (e) {
+        print('Message not sent. \n' + e.toString());
+      }
     }
   }
 

@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const dotenv_1 = __importDefault(require("dotenv"));
 // Replace if using a different env file or config.
 dotenv_1.default.config({ path: './.env' });
@@ -26,6 +27,8 @@ const path_1 = __importDefault(require("path"));
 const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const smtp_mail = process.env.SMTP_MAIL;
+const smtp_pass = process.env.SMTP_PASS;
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(body_parser_1.default.json());
@@ -93,9 +96,7 @@ app.get('/verify', (req, res) => {
     const email = req.query.email;
     const phone = req.query.phone;
     const company = req.query.company;
-    console.log(req.query.address);
     const address = JSON.parse(req.query.address);
-    console.log(address);
     res.render('verify', { name, email, phone, company, address });
 });
 app.post('/approve', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -145,6 +146,34 @@ app.post('/approve', (req, res) => __awaiter(void 0, void 0, void 0, function* (
     catch (error) {
         console.error('Error approving user:', error);
         res.status(500).send('Internal Server Error');
+    }
+}));
+app.post('/send-verification-email', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, displayName, phone, company, address } = req.body;
+    if (!email || !displayName || !phone || !company || !address) {
+        return res.status(400).send('All fields are required');
+    }
+    const link = `https://franchise-management-server.vercel.app/verify?email=${encodeURIComponent(email)}&name=${encodeURIComponent(displayName)}&phone=${encodeURIComponent(phone)}&company=${encodeURIComponent(company)}&address=${encodeURIComponent(JSON.stringify(address))}`;
+    const transporter = nodemailer_1.default.createTransport({
+        service: 'gmail',
+        auth: {
+            user: smtp_mail,
+            pass: smtp_pass,
+        },
+    });
+    const mailOptions = {
+        from: `"Franchise Manager" <${smtp_mail}>`,
+        to: email,
+        subject: 'Account Verification',
+        text: `Please verify your account by clicking the link: ${link}`,
+    };
+    try {
+        yield transporter.sendMail(mailOptions);
+        res.status(200).send('Verification email sent successfully');
+    }
+    catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).send('Error sending email');
     }
 }));
 app.get('/stripe-key', (req, res) => {

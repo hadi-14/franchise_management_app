@@ -29,24 +29,74 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
 
   List<DropdownMenuItem<String>> _categoryDropdownItems = [];
   List<DropdownMenuItem<String>> _productDropdownItems = [];
+  List<DropdownMenuItem<String>> _storeDropdownItems = []; // Store dropdown items
   List<Map<String, dynamic>> _items = [];
   String _selectedState = 'Request';
+  String? _selectedStore; // Selected store
   DateTime _selectedDate = DateTime.now();
   bool _isCompleted = false;
   String _previousState = 'Request';
 
   final List<String> _states = ['Request', 'Pending', 'Completed', 'Cancelled'];
-  
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _generateOrderID();
+    _fetchStores(); // Fetch stores for dropdown
     _fetchCategories();
     _fetchProducts();
     if (widget.salesOrderId != null) {
       _loadSalesOrder(widget.salesOrderId!);
+    }
+  }
+
+  Future<void> _generateOrderID() async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
+      final lastOrderSnapshot = await _firestore
+          .collection('sales')
+          .doc(franchiseID)
+          .collection('list')
+          .orderBy('OrderID', descending: true)
+          .limit(1)
+          .get();
+
+      int newOrderID = 1;
+      if (lastOrderSnapshot.docs.isNotEmpty) {
+        final lastOrderID = lastOrderSnapshot.docs.first.data()['OrderID'] as int;
+        newOrderID = lastOrderID + 1;
+      }
+
+      setState(() {
+        _orderIDController.text = newOrderID.toString();
+      });
+    }
+  }
+
+  Future<void> _fetchStores() async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
+      final storesSnapshot = await _firestore
+          .collection('store')
+          .doc(franchiseID)
+          .collection('list')
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _storeDropdownItems = storesSnapshot.docs
+              .map((doc) => DropdownMenuItem<String>(
+            value: doc.id,
+            child: Text(doc.data()['Name']),
+          ))
+              .toList();
+        });
+      }
     }
   }
 
@@ -65,33 +115,43 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
         setState(() {
           _categoryDropdownItems = categoriesSnapshot.docs
               .map((doc) => DropdownMenuItem<String>(
-                    value: doc.id,
-                    child: Text(doc.data()['name']),
-                  ))
+            value: doc.id,
+            child: Text(doc.data()['name']),
+          ))
               .toList();
         });
       }
     }
   }
 
-  Future<void> _fetchProducts() async {
+  Future<void> _fetchProducts([String? selectedCategory]) async {
     final userState = Provider.of<UserState>(context, listen: false);
     final franchiseID = userState.franchiseID;
 
     if (franchiseID.isNotEmpty) {
-      final productsSnapshot = await _firestore
-          .collection('product')
-          .doc(franchiseID)
-          .collection('list')
-          .get();
+      QuerySnapshot<Map<String, dynamic>> productsSnapshot;
+      if (selectedCategory != null) {
+        productsSnapshot = await _firestore
+            .collection('product')
+            .doc(franchiseID)
+            .collection('list')
+            .where('categoryID', isEqualTo: selectedCategory)
+            .get();
+      } else {
+        productsSnapshot = await _firestore
+            .collection('product')
+            .doc(franchiseID)
+            .collection('list')
+            .get();
+      }
 
       if (mounted) {
         setState(() {
           _productDropdownItems = productsSnapshot.docs
               .map((doc) => DropdownMenuItem<String>(
-                    value: doc.id,
-                    child: Text(doc.data()['productName']),
-                  ))
+            value: doc.id,
+            child: Text(doc.data()['productName']),
+          ))
               .toList();
         });
       }
@@ -136,6 +196,31 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
     });
   }
 
+  Future<void> _proceedToPayment() async {
+    if (_selectedStore == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a store')),
+      );
+      return;
+    }
+
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (_orderIDController.text.isEmpty) {
+      await _generateOrderID();
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaymentSheetMobile(),
+      ),
+    ).then((_) async {
+      await _saveSalesOrder();
+    });
+  }
+
   Future<void> _saveSalesOrder() async {
     final userState = Provider.of<UserState>(context, listen: false);
     final franchiseID = userState.franchiseID;
@@ -143,10 +228,11 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
 
     if (franchiseID.isNotEmpty && user != null) {
       final salesOrderData = {
-        'OrderID': _orderIDController.text,
+        'OrderID': int.parse(_orderIDController.text), // Save as an integer
         'State': _selectedState,
+        'StoreID': _selectedStore, // Save the selected store
         'TotalAmount': double.parse(_totalAmountController.text),
-        'Tax': double.parse(_taxController.text == "" ? _taxController.text: "0"),
+        'Tax': double.parse(_taxController.text),
         'ServiceFee': double.parse(_serviceFeeController.text),
         'NetTotal': double.parse(_netTotalController.text),
         'Date': _selectedDate,
@@ -193,19 +279,6 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
               }
             });
           }
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ((defaultTargetPlatform ==
-                          TargetPlatform.android ||
-                      defaultTargetPlatform == TargetPlatform.iOS)
-                  ? const PaymentSheetMobile()
-                  : PaymentElementWeb(
-                      amount: double.parse(_netTotalController
-                          .text))), //netTotal: double.parse(_netTotalController.text)
-            ),
-          );
         }
       }
     }
@@ -225,9 +298,10 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
       final data = docSnapshot.data();
       if (data != null) {
         setState(() {
-          _orderIDController.text = data['OrderID'];
+          _orderIDController.text = data['OrderID'].toString();
           _selectedState = data['State'];
           _previousState = data['State'];
+          _selectedStore = data['StoreID'];
           _totalAmountController.text = data['TotalAmount'].toString();
           _taxController.text = data['Tax'].toString();
           _serviceFeeController.text = data['ServiceFee'].toString();
@@ -236,14 +310,14 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
           _items.clear();
           _items.addAll(
               List<Map<String, dynamic>>.from(data['items']).map((item) {
-            item['quantityController'] =
-                TextEditingController(text: item['Quantity'].toString());
-            item['unitPriceController'] =
-                TextEditingController(text: item['UnitPrice'].toString());
-            item['piecesPerBoxController'] =
-                TextEditingController(text: item['piecesPerBox'].toString());
-            return item;
-          }).toList());
+                item['quantityController'] =
+                    TextEditingController(text: item['Quantity'].toString());
+                item['unitPriceController'] =
+                    TextEditingController(text: item['UnitPrice'].toString());
+                item['piecesPerBoxController'] =
+                    TextEditingController(text: item['piecesPerBox'].toString());
+                return item;
+              }).toList());
           _isCompleted = _selectedState == 'Completed';
         });
       }
@@ -273,46 +347,28 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
         if (productSnapshot.docs.isNotEmpty) {
           final product = productSnapshot.docs.first;
           final productData = product.data();
-          final category = productData['category'];
-          final productName = productData['productName'];
+          final categoryID = productData['categoryID'];
+          final productID = product.id;
 
-          final categoriesSnapshot = await _firestore
-              .collection('product')
-              .doc(franchiseID)
-              .collection('category')
-              .where('name', isEqualTo: category)
-              .get();
+          await _fetchCategories();
+          await _fetchProducts(categoryID);
 
-          final productsSnapshot = await _firestore
-              .collection('product')
-              .doc(franchiseID)
-              .collection('list')
-              .where('productName', isEqualTo: productName)
-              .get();
-
-          if (categoriesSnapshot.docs.isNotEmpty &&
-              productsSnapshot.docs.isNotEmpty) {
-            setState(() {
-              _items.add({
-                'Category': category,
-                'Product': productName,
-                'Quantity': 1,
-                'UnitPrice': productData['price'],
-                'Total': productData['price'],
-                'isBox': false,
-                'piecesPerBox': 0,
-                'quantityController': TextEditingController(text: '1'),
-                'unitPriceController': TextEditingController(
-                    text: productData['price'].toString()),
-                'piecesPerBoxController': TextEditingController(),
-              });
-              _calculateTotal();
+          setState(() {
+            _items.add({
+              'Category': categoryID,
+              'Product': productID,
+              'Quantity': 1,
+              'UnitPrice': productData['price'],
+              'Total': productData['price'],
+              'isBox': false,
+              'piecesPerBox': 0,
+              'quantityController': TextEditingController(text: '1'),
+              'unitPriceController': TextEditingController(
+                  text: productData['price'].toString()),
+              'piecesPerBoxController': TextEditingController(),
             });
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Category or Product not found')),
-            );
-          }
+            _calculateTotal();
+          });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No product found with this UPC code')),
@@ -325,14 +381,13 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
   void _handleKey(RawKeyEvent event) {
     if (event is RawKeyDownEvent && event.logicalKey.keyId == 4295426088) {
       // Enter key pressed
-      _saveSalesOrder();
+      _proceedToPayment();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -342,7 +397,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
           if (widget.salesOrderId != null && !_isCompleted)
             IconButton(
               icon: const Icon(Icons.save),
-              onPressed: _saveSalesOrder,
+              onPressed: _proceedToPayment,
             ),
         ],
       ),
@@ -360,17 +415,27 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                   runSpacing: 16.0,
                   children: [
                     _buildTextField('OrderID', _orderIDController,
-                        enabled: !_isCompleted),
+                        enabled: false),
+                    _buildDropdown(
+                      'Store', // Store dropdown
+                      _selectedStore,
+                      _storeDropdownItems,
+                          (value) {
+                        setState(() {
+                          _selectedStore = value!;
+                        });
+                      },
+                    ),
                     _buildDropdown(
                       'State',
                       _selectedState,
                       _states
                           .map((state) => DropdownMenuItem<String>(
-                                value: state,
-                                child: Text(state),
-                              ))
+                        value: state,
+                        child: Text(state),
+                      ))
                           .toList(),
-                      (value) {
+                          (value) {
                         setState(() {
                           _selectedState = value!;
                           if (_selectedState == 'Completed' &&
@@ -385,8 +450,8 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                         keyboardType: TextInputType.number, enabled: false),
                     _buildTextField('Tax (%)', _taxController,
                         keyboardType: TextInputType.number, onChanged: (value) {
-                      _calculateTotal();
-                    }, enabled: !_isCompleted),
+                          _calculateTotal();
+                        }, enabled: !_isCompleted),
                     _buildTextField('Service Fee', _serviceFeeController,
                         keyboardType: TextInputType.number, enabled: false),
                     _buildTextField('Net Total', _netTotalController,
@@ -427,10 +492,10 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                   'Category',
                                   _items[index]['Category'],
                                   _categoryDropdownItems,
-                                  (value) {
+                                      (value) {
                                     setState(() {
                                       _items[index]['Category'] = value;
-                                      _fetchProducts();
+                                      _fetchProducts(value);
                                     });
                                   },
                                   enabled: !_isCompleted,
@@ -439,7 +504,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                   'Product',
                                   _items[index]['Product'],
                                   _productDropdownItems,
-                                  (value) {
+                                      (value) {
                                     setState(() {
                                       _items[index]['Product'] = value;
                                     });
@@ -455,7 +520,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                       _items[index]['Quantity'] =
                                           int.parse(value);
                                       _items[index]['Total'] = _items[index]
-                                              ['Quantity'] *
+                                      ['Quantity'] *
                                           _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
@@ -466,17 +531,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                   'Unit Price',
                                   _items[index]['unitPriceController'],
                                   keyboardType: TextInputType.number,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _items[index]['UnitPrice'] =
-                                          double.parse(value);
-                                      _items[index]['Total'] = _items[index]
-                                              ['Quantity'] *
-                                          _items[index]['UnitPrice'];
-                                      _calculateTotal();
-                                    });
-                                  },
-                                  enabled: !_isCompleted,
+                                  enabled: false, // Disable editing
                                 ),
                                 _buildTextField(
                                   'Pieces per Box',
@@ -487,13 +542,13 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                       _items[index]['piecesPerBox'] =
                                           int.parse(value);
                                       _items[index]['Total'] = _items[index]
-                                              ['Quantity'] *
+                                      ['Quantity'] *
                                           _items[index]['UnitPrice'];
                                       _calculateTotal();
                                     });
                                   },
-                                  enabled:
-                                      _items[index]['isBox'] && !_isCompleted,
+                                  enabled: _items[index]['isBox'] &&
+                                      !_isCompleted,
                                 ),
                                 Column(
                                   children: [
@@ -507,7 +562,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                                       },
                                       tristate: false,
                                       materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
+                                      MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     const Text('Box'),
                                   ],
@@ -540,9 +595,9 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _saveSalesOrder,
+                  onPressed: _proceedToPayment,
                   child: Text(widget.salesOrderId == null
-                      ? 'Add Sales Order'
+                      ? 'Proceed to Payment'
                       : 'Update Sales Order'),
                 ),
               ],
@@ -555,8 +610,8 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
 
   Widget _buildTextField(String label, TextEditingController controller,
       {TextInputType keyboardType = TextInputType.text,
-      bool enabled = true,
-      Function(String)? onChanged}) {
+        bool enabled = true,
+        Function(String)? onChanged}) {
     return SizedBox(
       width: 300,
       child: TextField(
@@ -594,4 +649,7 @@ class _AddSalesOrderPageState extends State<AddSalesOrderPage> with AutomaticKee
       ),
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

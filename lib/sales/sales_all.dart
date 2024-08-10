@@ -18,7 +18,8 @@ class SalesOrdersPage extends StatefulWidget {
 class _SalesOrdersPageState extends State<SalesOrdersPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
+  final PagedDataTableController<String, DocumentSnapshot>
+      _pagedDataTableController = PagedDataTableController();
 
   @override
   void initState() {
@@ -30,33 +31,48 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
     _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchSalesOrders(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken, String franchiseID) async {
-    Query query = _firestore.collection('sales').doc(franchiseID).collection('list');
+  Future<(List<DocumentSnapshot>, String?)> _fetchSalesOrders(
+      int pageSize,
+      SortModel? sortModel,
+      FilterModel filterModel,
+      String? pageToken,
+      String franchiseID) async {
+    Query query =
+        _firestore.collection('sales').doc(franchiseID).collection('list');
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
           .where('OrderID', isGreaterThanOrEqualTo: _searchController.text)
-          .where('OrderID', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+          .where('OrderID',
+              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
     // Apply pagination
     if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore.collection('sales').doc(franchiseID).collection('list').doc(pageToken).get());
+      query = query.startAfterDocument(await _firestore
+          .collection('sales')
+          .doc(franchiseID)
+          .collection('list')
+          .doc(pageToken)
+          .get());
     }
 
     final snapshot = await query.limit(pageSize).get();
-    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
+    final nextPageToken =
+        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
 
     return (snapshot.docs, nextPageToken);
   }
 
-  Future<void> _deleteSalesOrder(BuildContext context, String id, String franchiseID) async {
+  Future<void> _deleteSalesOrder(
+      BuildContext context, String id, String franchiseID) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this sales order?'),
+        content:
+            const Text('Are you sure you want to delete this sales order?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -72,7 +88,12 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
 
     if (confirmed == true) {
       if (franchiseID.isNotEmpty) {
-        await _firestore.collection('sales').doc(franchiseID).collection('list').doc(id).delete();
+        await _firestore
+            .collection('sales')
+            .doc(franchiseID)
+            .collection('list')
+            .doc(id)
+            .delete();
         _pagedDataTableController.refresh(); // Refresh the table after deletion
       }
     }
@@ -85,7 +106,9 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(userState.role == 'franchisee' ? 'Purchase Orders': 'Sales Orders', style: theme.headlineMedium),
+        title: Text(
+            userState.role == 'franchisee' ? 'Purchase Orders' : 'Sales Orders',
+            style: theme.headlineMedium),
         actions: [
           if (userState.role == 'owner' || userState.role == 'franchisee')
             IconButton(
@@ -93,7 +116,8 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AddSalesOrderPage()),
+                  MaterialPageRoute(
+                      builder: (context) => const AddSalesOrderPage()),
                 );
               },
             ),
@@ -121,7 +145,9 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                   width: MediaQuery.of(context).size.width * .75,
                   child: PagedDataTable<String, DocumentSnapshot>(
                     controller: _pagedDataTableController,
-                    fetcher: (pageSize, sortModel, filterModel, pageToken) => _fetchSalesOrders(pageSize, sortModel, filterModel, pageToken, userState.franchiseID),
+                    fetcher: (pageSize, sortModel, filterModel, pageToken) =>
+                        _fetchSalesOrders(pageSize, sortModel, filterModel,
+                            pageToken, userState.franchiseID),
                     columns: [
                       TableColumn(
                         title: const Text("OrderID"),
@@ -172,14 +198,17 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
 
                           return Row(
                             children: [
-                              if (userState.role == 'owner' || (userState.role == 'franchisee' && user == createdBy))
+                              if (userState.role == 'owner' ||
+                                  (userState.role == 'franchisee' &&
+                                      user == createdBy))
                                 IconButton(
                                   icon: const Icon(Icons.edit),
                                   onPressed: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => AddSalesOrderPage(salesOrderId: item.id),
+                                        builder: (context) => AddSalesOrderPage(
+                                            salesOrderId: item.id),
                                       ),
                                     );
                                   },
@@ -190,15 +219,20 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => SalesOrderDetailsPage(orderId: item.id),
+                                      builder: (context) =>
+                                          SalesOrderDetailsPage(
+                                              orderId: item.id),
                                     ),
                                   );
                                 },
                               ),
-                              if (userState.role == 'owner' || (userState.role == 'franchisee' && user == createdBy))
+                              if (userState.role == 'owner' ||
+                                  (userState.role == 'franchisee' &&
+                                      user == createdBy))
                                 IconButton(
                                   icon: const Icon(Icons.delete),
-                                  onPressed: () => _deleteSalesOrder(context, item.id, userState.franchiseID),
+                                  onPressed: () => _deleteSalesOrder(
+                                      context, item.id, userState.franchiseID),
                                 ),
                             ],
                           );

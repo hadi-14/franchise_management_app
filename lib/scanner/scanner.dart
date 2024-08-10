@@ -15,11 +15,12 @@ class BarcodeScannerWithZoom extends StatefulWidget {
   State<BarcodeScannerWithZoom> createState() => _BarcodeScannerWithZoomState();
 }
 
-class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
+class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> with AutomaticKeepAliveClientMixin {
   final MobileScannerController controller = MobileScannerController(
     torchEnabled: false,
   );
 
+  bool _isProcessingBarcode = false;
   double _zoomFactor = 0.0;
 
   Widget _buildZoomScaleSlider() {
@@ -68,64 +69,86 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom> {
   }
 
   void _onDetect(BarcodeCapture capture) {
+    if (_isProcessingBarcode) return; // Prevent re-entry if already processing
     final barcode = capture.barcodes.first.rawValue;
     if (barcode != null) {
+      setState(() {
+        _isProcessingBarcode = true;
+      });
       Navigator.pop(context, barcode);
     }
   }
 
+  Future<bool> _onWillPop() async {
+    if (_isProcessingBarcode) {
+      // Show a message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Processing barcode, please wait...')),
+      );
+      return false; // Prevent navigation
+    }
+    return true; // Allow navigation
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('With zoom slider')),
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: controller,
-            fit: BoxFit.contain,
-            onDetect: _onDetect,
-            errorBuilder: (context, error, child) {
-              return ScannerErrorWidget(error: error);
-            },
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
+    super.build(context);
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('With zoom slider')),
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            MobileScanner(
+              controller: controller,
+              fit: BoxFit.contain,
+              onDetect: _onDetect,
+              errorBuilder: (context, error, child) {
+                return ScannerErrorWidget(error: error);
+              },
+            ),
+            Align(
               alignment: Alignment.bottomCenter,
-              height: 100,
-              color: Colors.black.withOpacity(0.4),
-              child: Column(
-                children: [
-                  if (!kIsWeb) _buildZoomScaleSlider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ToggleFlashlightButton(controller: controller),
-                      StartStopMobileScannerButton(controller: controller),
-                      Expanded(
-                        child: Center(
-                          child: ScannedBarcodeLabel(
-                            barcodes: controller.barcodes,
+              child: Container(
+                alignment: Alignment.bottomCenter,
+                height: 100,
+                color: Colors.black.withOpacity(0.4),
+                child: Column(
+                  children: [
+                    if (!kIsWeb) _buildZoomScaleSlider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ToggleFlashlightButton(controller: controller),
+                        StartStopMobileScannerButton(controller: controller),
+                        Expanded(
+                          child: Center(
+                            child: ScannedBarcodeLabel(
+                              barcodes: controller.barcodes,
+                            ),
                           ),
                         ),
-                      ),
-                      SwitchCameraButton(controller: controller),
-                      AnalyzeImageFromGalleryButton(controller: controller),
-                    ],
-                  ),
-                ],
+                        SwitchCameraButton(controller: controller),
+                        AnalyzeImageFromGalleryButton(controller: controller),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // @override
-  // Future<void> dispose() async {
-  //   super.dispose();
-  //   await controller.dispose();
-  // }
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Future<void> dispose() async {
+    await controller.dispose();
+    super.dispose();
+  }
 }

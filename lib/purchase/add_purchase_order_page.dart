@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../Common/user_state.dart';
+import '../payment/payment_page.dart';
 import '../scanner/scanner.dart';
 
 class AddPurchaseOrderPage extends StatefulWidget {
@@ -16,7 +17,7 @@ class AddPurchaseOrderPage extends StatefulWidget {
   _AddPurchaseOrderPageState createState() => _AddPurchaseOrderPageState();
 }
 
-class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
+class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> with AutomaticKeepAliveClientMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController _orderIDController = TextEditingController();
@@ -270,8 +271,8 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           final product = productSnapshot.docs.first;
           setState(() {
             _items.add({
-              'Category': product.data()['category'],
-              'Product': product.data()['productName'],
+              'Category': product.data()['categoryID'],
+              'Product': product.id,
               'Quantity': 1,
               'UnitPrice': product.data()['price'],
               'Total': product.data()['price'],
@@ -292,15 +293,66 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
     }
   }
 
+  Future<void> _generateOrderID() async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
+      final lastOrderSnapshot = await _firestore
+          .collection('purchase')
+          .doc(franchiseID)
+          .collection('list')
+          .orderBy('OrderID', descending: true)
+          .limit(1)
+          .get();
+
+      int newOrderID = 1;
+      if (lastOrderSnapshot.docs.isNotEmpty) {
+        final lastOrderID = lastOrderSnapshot.docs.first.data()['OrderID'] as int;
+        newOrderID = lastOrderID + 1;
+      }
+
+      setState(() {
+        _orderIDController.text = newOrderID.toString();
+      });
+    }
+  }
+
+    Future<void> _proceedToPayment() async {
+    if (_selectedStore == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a store')),
+      );
+      return;
+    }
+
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (_orderIDController.text.isEmpty) {
+      await _generateOrderID();
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaymentSheetMobile(),
+      ),
+    ).then((_) async {
+      await _savePurchaseOrder();
+    });
+  }
+
   void _handleKey(RawKeyEvent event) {
     if (event is RawKeyDownEvent && event.logicalKey.keyId == 4295426088) {
       // Enter key pressed
-      _savePurchaseOrder();
+      _proceedToPayment();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -310,7 +362,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
           if (widget.purchaseOrderId != null && !_isCompleted)
             IconButton(
               icon: const Icon(Icons.save),
-              onPressed: _savePurchaseOrder,
+              onPressed: _proceedToPayment,
             ),
         ],
       ),
@@ -513,9 +565,9 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _savePurchaseOrder,
+                  onPressed: _proceedToPayment,
                   child: Text(widget.purchaseOrderId == null
-                      ? 'Add Purchase Order'
+                      ? 'Proceed to Payment'
                       : 'Update Purchase Order'),
                 ),
               ],
@@ -567,4 +619,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> {
       ),
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
