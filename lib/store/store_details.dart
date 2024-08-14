@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:paged_datatable/paged_datatable.dart';
 import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart'; // For kIsWeb
 
 class StoreDetailsPage extends StatefulWidget {
   const StoreDetailsPage({super.key});
@@ -17,7 +18,6 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -35,7 +35,7 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
   }
 
   void _filterStores() {
-    _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
+    setState(() {}); // Trigger the UI to update with the search filter
   }
 
   Future<void> _fetchFranchises() async {
@@ -48,8 +48,7 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
     }
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchStores(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken, String franchiseID) async {
-
+  Future<List<DocumentSnapshot>> _fetchStores(String franchiseID) async {
     Query query = _firestore.collection('store').doc(franchiseID).collection('list');
 
     // Apply search filter
@@ -59,15 +58,8 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
           .where('Name', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
-    // Apply pagination
-    if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore.collection('store').doc(franchiseID).collection('list').doc(pageToken).get());
-    }
-
-    final snapshot = await query.limit(pageSize).get();
-    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
-
-    return (snapshot.docs, nextPageToken);
+    final snapshot = await query.get();
+    return snapshot.docs;
   }
 
   Future<void> _addStore(String franchiseID) async {
@@ -82,7 +74,7 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
         'Phone': _phoneController.text,
         'Region': _regionController.text,
       });
-      _pagedDataTableController.refresh(); // Refresh the table after adding
+      setState(() {}); // Refresh the UI after adding
     }
   }
 
@@ -100,30 +92,23 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
     final theme = FlutterFlowTheme.of(context);
     final userState = Provider.of<UserState>(context);
 
+    // Check if the current platform is Android, iOS, or Web
+    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
+
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Stores', style: theme.headlineMedium),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddStoreModal(userState.franchiseID),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Stores',
-                  style: theme.headlineMedium,
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddStoreModal(userState.franchiseID),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Store'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.primary,
-                    foregroundColor: theme.primaryBackground,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -136,103 +121,135 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * .75,
-                  child: PagedDataTable<String, DocumentSnapshot>(
-                    controller: _pagedDataTableController,
-                    fetcher: (pageSize, sortModel, filterModel, pageToken) => _fetchStores(pageSize, sortModel, filterModel, pageToken, userState.franchiseID),
-                    columns: [
-                      TableColumn(
-                        title: const Text("StoreID"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['StoreID'].toString());
-                        },
-                        id: 'StoreID',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.1),
-                      ),
-                      TableColumn(
-                        title: const Text("Name"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Name']);
-                        },
-                        id: 'Name',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.1),
-                      ),
-                      TableColumn(
-                        title: const Text("Franchise"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Franchise']);
-                        },
-                        id: 'Franchise',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Email"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Email']);
-                        },
-                        id: 'Email',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Phone"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Phone']);
-                        },
-                        id: 'Phone',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Region"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Region']);
-                        },
-                        id: 'Region',
-                        size: const FractionalColumnSize(0.2),
-                      ),
-                      TableColumn(
-                        title: const Text("Actions"),
-                        cellBuilder: (context, item, index) {
-                          return Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _showEditStoreModal(context, item, userState.franchiseID),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () => _deleteStore(context, item.id, userState.franchiseID),
-                              ),
-                            ],
-                          );
-                        },
-                        size: const FractionalColumnSize(0.1),
-                      ),
-                    ],
-                    initialPageSize: 10,
-                    pageSizes: const [5, 10, 20, 50],
-                    configuration: const PagedDataTableConfiguration(
-                      copyItems: true,
-                    ),
-                  ),
-                ),
+              child: FutureBuilder<List<DocumentSnapshot>>(
+                future: _fetchStores(userState.franchiseID),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final data = snapshot.data ?? [];
+                  if (data.isEmpty) {
+                    return const Center(child: Text('No stores found.'));
+                  }
+
+                  return isMobile
+                      ? _buildCardLayout(data, theme, userState)
+                      : _buildTableLayout(data, theme, userState);
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme, UserState userState) {
+    return ListView.builder(
+      itemCount: data.length,
+      itemBuilder: (context, index) {
+        final store = data[index].data() as Map<String, dynamic>;
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Store ID: ${store['StoreID']}',
+                  style: theme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Name: ${store['Name']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Franchise: ${store['Franchise']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Email: ${store['Email']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Phone: ${store['Phone']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Region: ${store['Region']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showEditStoreModal(context, data[index], userState.franchiseID),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteStore(context, data[index].id, userState.franchiseID),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTableLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme, UserState userState) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Store ID')),
+          DataColumn(label: Text('Name')),
+          DataColumn(label: Text('Franchise')),
+          DataColumn(label: Text('Email')),
+          DataColumn(label: Text('Phone')),
+          DataColumn(label: Text('Region')),
+          DataColumn(label: Text('Actions')),
+        ],
+        rows: data.map((storeDoc) {
+          final store = storeDoc.data() as Map<String, dynamic>;
+          return DataRow(cells: [
+            DataCell(Text(store['StoreID'].toString())),
+            DataCell(Text(store['Name'])),
+            DataCell(Text(store['Franchise'])),
+            DataCell(Text(store['Email'])),
+            DataCell(Text(store['Phone'])),
+            DataCell(Text(store['Region'])),
+            DataCell(
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _showEditStoreModal(context, storeDoc, userState.franchiseID),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () => _deleteStore(context, storeDoc.id, userState.franchiseID),
+                  ),
+                ],
+              ),
+            ),
+          ]);
+        }).toList(),
       ),
     );
   }
@@ -374,7 +391,7 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
         'Phone': _phoneController.text,
         'Region': _regionController.text,
       });
-      _pagedDataTableController.refresh(); // Refresh the table after updating
+      setState(() {}); // Refresh the UI after updating
     }
   }
 
@@ -400,7 +417,7 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
     if (confirmed == true) {
       if (franchiseID.isNotEmpty) {
         await _firestore.collection('store').doc(franchiseID).collection('list').doc(id).delete();
-        _pagedDataTableController.refresh(); // Refresh the table after deletion
+        setState(() {}); // Refresh the UI after deletion
       }
     }
   }

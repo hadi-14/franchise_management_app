@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:paged_datatable/paged_datatable.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'dart:io' show Platform;
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
 
@@ -17,8 +18,6 @@ class ProductsPage extends StatefulWidget {
 class _ProductsPageState extends State<ProductsPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot>
-  _pagedDataTableController = PagedDataTableController();
 
   String? _selectedCategoryID;
   Map<String, String> _categories = {};
@@ -31,7 +30,7 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   void _filterProducts() {
-    _pagedDataTableController.refresh();
+    setState(() {}); // Trigger the UI to update with the search filter
   }
 
   Future<void> _fetchCategories() async {
@@ -50,8 +49,7 @@ class _ProductsPageState extends State<ProductsPage> {
     });
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchProducts(int pageSize,
-      SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
+  Future<List<DocumentSnapshot>> _fetchProducts() async {
     Query query = _firestore
         .collection('product')
         .doc(widget.franchiseID)
@@ -70,26 +68,16 @@ class _ProductsPageState extends State<ProductsPage> {
       query = query.where('categoryID', isEqualTo: _selectedCategoryID);
     }
 
-    // Apply pagination
-    if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore
-          .collection('product')
-          .doc(widget.franchiseID)
-          .collection('list')
-          .doc(pageToken)
-          .get());
-    }
-
-    final snapshot = await query.limit(pageSize).get();
-    final nextPageToken =
-    snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
-
-    return (snapshot.docs, nextPageToken);
+    final snapshot = await query.get();
+    return snapshot.docs;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+
+    // Check if the current platform is Android, iOS, or Web
+    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
 
     return Scaffold(
       body: Padding(
@@ -142,116 +130,150 @@ class _ProductsPageState extends State<ProductsPage> {
                   onChanged: (value) {
                     setState(() {
                       _selectedCategoryID = value;
-                      _pagedDataTableController.refresh();
                     });
                   },
                 ),
               ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * .75,
-                  child: PagedDataTable<String, DocumentSnapshot>(
-                    controller: _pagedDataTableController,
-                    fetcher: _fetchProducts,
-                    columns: [
-                      TableColumn(
-                        title: const Text("ProductID"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['productID'].toString());
-                        },
-                        id: 'productID',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Name"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['productName']);
-                        },
-                        id: 'productName',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("UPC Code"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['upcCode']);
-                        },
-                        id: 'upcCode',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Price"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['price'].toString());
-                        },
-                        id: 'price',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Category"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          final categoryName =
-                              _categories[data['categoryID']] ?? 'Unknown';
-                          return Text(categoryName);
-                        },
-                        id: 'categoryID',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.1),
-                      ),
-                      TableColumn(
-                        title: const Text("Quantity"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['quantity'].toString());
-                        },
-                        id: 'quantity',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Actions"),
-                        cellBuilder: (context, item, index) {
-                          return Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _showProductDetailsPage(
-                                    context,
-                                    productDoc: item),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () =>
-                                    _deleteProduct(context, item.id),
-                              ),
-                            ],
-                          );
-                        },
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                    ],
-                    initialPageSize: 10,
-                    pageSizes: const [5, 10, 20, 50],
-                    configuration: const PagedDataTableConfiguration(
-                      copyItems: true,
-                    ),
-                  ),
-                ),
+              child: FutureBuilder<List<DocumentSnapshot>>(
+                future: _fetchProducts(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final data = snapshot.data ?? [];
+                  if (data.isEmpty) {
+                    return const Center(child: Text('No products found.'));
+                  }
+
+                  return isMobile
+                      ? _buildCardLayout(data, theme)
+                      : _buildTableLayout(data, theme);
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
+    return ListView.builder(
+      itemCount: data.length,
+      itemBuilder: (context, index) {
+        final product = data[index].data() as Map<String, dynamic>;
+        final categoryName = _categories[product['categoryID']] ?? 'Unknown';
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Product ID: ${product['productID']}',
+                  style: theme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Name: ${product['productName']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'UPC Code: ${product['upcCode']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Price: \$${product['price'].toString()}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Category: $categoryName',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Quantity: ${product['quantity'].toString()}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showProductDetailsPage(
+                          context,
+                          productDoc: data[index]),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () =>
+                          _deleteProduct(context, data[index].id),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTableLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Product ID')),
+          DataColumn(label: Text('Name')),
+          DataColumn(label: Text('UPC Code')),
+          DataColumn(label: Text('Price')),
+          DataColumn(label: Text('Category')),
+          DataColumn(label: Text('Quantity')),
+          DataColumn(label: Text('Actions')),
+        ],
+        rows: data.map((productDoc) {
+          final product = productDoc.data() as Map<String, dynamic>;
+          final categoryName = _categories[product['categoryID']] ?? 'Unknown';
+
+          return DataRow(cells: [
+            DataCell(Text(product['productID'].toString())),
+            DataCell(Text(product['productName'])),
+            DataCell(Text(product['upcCode'])),
+            DataCell(Text(product['price'].toString())),
+            DataCell(Text(categoryName)),
+            DataCell(Text(product['quantity'].toString())),
+            DataCell(
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _showProductDetailsPage(
+                        context,
+                        productDoc: productDoc),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () => _deleteProduct(context, productDoc.id),
+                  ),
+                ],
+              ),
+            ),
+          ]);
+        }).toList(),
       ),
     );
   }
@@ -268,7 +290,7 @@ class _ProductsPageState extends State<ProductsPage> {
         ),
       ),
     );
-    _pagedDataTableController.refresh();
+    setState(() {}); // Refresh the UI after returning from the details page
   }
 
   Future<void> _deleteProduct(BuildContext context, String id) async {
@@ -298,7 +320,7 @@ class _ProductsPageState extends State<ProductsPage> {
             .collection('list')
             .doc(id)
             .delete();
-        _pagedDataTableController.refresh(); // Refresh the table after deletion
+        setState(() {}); // Refresh the UI after deletion
       }
     }
   }

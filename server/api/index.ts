@@ -96,6 +96,28 @@ function getKeys(payment_method?: string) {
 app.set('view engine', 'ejs');
 app.set('views', path.resolve(__dirname, '../views'));
 
+// Fetch user details by UID
+app.get('/user-details', async (req, res) => {
+  const uid = req.query.uid as string;
+
+  if (!uid) {
+    return res.status(400).send('UID is required');
+  }
+
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    res.status(200).json({
+      displayName: userRecord.displayName,
+      email: userRecord.email,
+      phoneNumber: userRecord.phoneNumber,
+      metadata: userRecord.metadata,
+    });
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).send('Error fetching user data');
+  }
+});
+
 // Verify endpoint
 app.get('/verify', (req, res) => {
   const name = req.query.name as string;

@@ -90,6 +90,26 @@ function getKeys(payment_method) {
 // Set the view engine to ejs
 app.set('view engine', 'ejs');
 app.set('views', path_1.default.resolve(__dirname, '../views'));
+// Fetch user details by UID
+app.get('/user-details', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const uid = req.query.uid;
+    if (!uid) {
+        return res.status(400).send('UID is required');
+    }
+    try {
+        const userRecord = yield firebaseAdmin_1.admin.auth().getUser(uid);
+        res.status(200).json({
+            displayName: userRecord.displayName,
+            email: userRecord.email,
+            phoneNumber: userRecord.phoneNumber,
+            metadata: userRecord.metadata,
+        });
+    }
+    catch (error) {
+        console.error('Error fetching user data:', error);
+        res.status(500).send('Error fetching user data');
+    }
+}));
 // Verify endpoint
 app.get('/verify', (req, res) => {
     const name = req.query.name;

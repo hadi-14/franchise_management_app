@@ -1,8 +1,11 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:random_password_generator/random_password_generator.dart';
 import '../../Common/flutter_flow_theme.dart';
+import '../.env.dart';
 import '../main.dart';
 
 class CompanyDetailsPage extends StatefulWidget {
@@ -359,18 +362,58 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         }
         final data = snapshot.data?.docs ?? [];
 
-        return DataTable(
-          columns: const [
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Role')),
-          ],
-          rows: data.map((doc) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: Future.wait(data.map((doc) async {
             final userData = doc.data() as Map<String, dynamic>;
-            return DataRow(cells: [
-              DataCell(Text(userData['email'] ?? '')),
-              DataCell(Text(userData['role'] ?? '')),
-            ]);
-          }).toList(),
+            final uid = doc.id;
+
+            // Call the server to get the email and display name
+            final response = await http.get(
+              Uri.parse('$kApiUrl/user-details?uid=$uid'),
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            );
+
+            if (response.statusCode == 200) {
+              final serverData = jsonDecode(response.body);
+              return {
+                'email': serverData['email'] ?? 'N/A',
+                'displayName': serverData['displayName'] ?? 'N/A',
+                'role': userData['role'] ?? 'N/A',
+              };
+            } else {
+              return {
+                'email': 'Error',
+                'displayName': 'Error',
+                'role': userData['role'] ?? 'N/A',
+              };
+            }
+          }).toList()),
+          builder: (context, userSnapshot) {
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (userSnapshot.hasError) {
+              return Center(child: Text('Error: ${userSnapshot.error}'));
+            }
+            final usersData = userSnapshot.data ?? [];
+
+            return DataTable(
+              columns: const [
+                DataColumn(label: Text('Email')),
+                DataColumn(label: Text('Display Name')),
+                DataColumn(label: Text('Role')),
+              ],
+              rows: usersData.map((user) {
+                return DataRow(cells: [
+                  DataCell(Text(user['email'])),
+                  DataCell(Text(user['displayName'])),
+                  DataCell(Text(user['role'])),
+                ]);
+              }).toList(),
+            );
+          },
         );
       },
     );

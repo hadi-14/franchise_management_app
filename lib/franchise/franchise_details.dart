@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:paged_datatable/paged_datatable.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'dart:io' show Platform;
 import '../Common/flutter_flow_theme.dart';
 
 class FranchisePage extends StatefulWidget {
@@ -17,7 +18,6 @@ class _FranchisePageState extends State<FranchisePage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot> _pagedDataTableController = PagedDataTableController();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -35,10 +35,10 @@ class _FranchisePageState extends State<FranchisePage> {
   }
 
   void _filterFranchises() {
-    _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
+    setState(() {}); // Trigger the UI to update with the search filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchFranchises(int pageSize, SortModel? sortModel, FilterModel filterModel, String? pageToken) async {
+  Future<List<DocumentSnapshot>> _fetchFranchises() async {
     Query query = _firestore.collection('franchise').doc(widget.franchiseID).collection('list');
 
     // Apply search filter
@@ -48,15 +48,8 @@ class _FranchisePageState extends State<FranchisePage> {
           .where('Name', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
-    // Apply pagination
-    if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').doc(pageToken).get());
-    }
-
-    final snapshot = await query.limit(pageSize).get();
-    final nextPageToken = snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
-
-    return (snapshot.docs, nextPageToken);
+    final snapshot = await query.get();
+    return snapshot.docs;
   }
 
   Future<void> _addFranchise() async {
@@ -76,7 +69,7 @@ class _FranchisePageState extends State<FranchisePage> {
           'zip': int.parse(_zipController.text),
         },
       });
-      _pagedDataTableController.refresh(); // Refresh the table after adding
+      setState(() {}); // Refresh the UI after adding the franchise
     }
   }
 
@@ -92,6 +85,9 @@ class _FranchisePageState extends State<FranchisePage> {
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+
+    // Check if the current platform is Android, iOS, or Web
+    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
 
     return Scaffold(
       body: Padding(
@@ -129,94 +125,129 @@ class _FranchisePageState extends State<FranchisePage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * .75,
-                  child: PagedDataTable<String, DocumentSnapshot>(
-                    controller: _pagedDataTableController,
-                    fetcher: _fetchFranchises,
-                    columns: [
-                      TableColumn(
-                        title: const Text("FranchiseID"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['FranchiseID'].toString());
-                        },
-                        id: 'FranchiseID',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Name"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Name']);
-                        },
-                        id: 'Name',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Email"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Email']);
-                        },
-                        id: 'Email',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Phone"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['Phone']);
-                        },
-                        id: 'Phone',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Address"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          final address = data['Address'] as Map<String, dynamic>;
-                          return Text('${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}');
-                        },
-                        id: 'Address',
-                        size: const FractionalColumnSize(0.3),
-                      ),
-                      TableColumn(
-                        title: const Text("Actions"),
-                        cellBuilder: (context, item, index) {
-                          return Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _showEditFranchiseModal(context, item),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () => _deleteFranchise(context, item.id),
-                              ),
-                            ],
-                          );
-                        },
-                        size: const FractionalColumnSize(0.1),
-                      ),
-                    ],
-                    initialPageSize: 10,
-                    pageSizes: const [5, 10, 20, 50],
-                    configuration: const PagedDataTableConfiguration(
-                      copyItems: true,
-                    ),
-                  ),
-                ),
+              child: FutureBuilder<List<DocumentSnapshot>>(
+                future: _fetchFranchises(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final data = snapshot.data ?? [];
+                  if (data.isEmpty) {
+                    return const Center(child: Text('No franchises found.'));
+                  }
+
+                  return isMobile
+                      ? _buildCardLayout(data, theme)
+                      : _buildTableLayout(data, theme);
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
+    return ListView.builder(
+      itemCount: data.length,
+      itemBuilder: (context, index) {
+        final franchise = data[index].data() as Map<String, dynamic>;
+        final address = franchise['Address'] as Map<String, dynamic>;
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Franchise Name: ${franchise['Name']}',
+                  style: theme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Email: ${franchise['Email']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Phone: ${franchise['Phone']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Address: ${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showEditFranchiseModal(context, data[index]),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteFranchise(context, data[index].id),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTableLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('FranchiseID')),
+          DataColumn(label: Text('Name')),
+          DataColumn(label: Text('Email')),
+          DataColumn(label: Text('Phone')),
+          DataColumn(label: Text('Address')),
+          DataColumn(label: Text('Actions')),
+        ],
+        rows: data.map((franchiseDoc) {
+          final franchise = franchiseDoc.data() as Map<String, dynamic>;
+          final address = franchise['Address'] as Map<String, dynamic>;
+
+          return DataRow(
+            cells: [
+              DataCell(Text(franchise['FranchiseID'].toString())),
+              DataCell(Text(franchise['Name'])),
+              DataCell(Text(franchise['Email'])),
+              DataCell(Text(franchise['Phone'])),
+              DataCell(Text('${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}')),
+              DataCell(
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _showEditFranchiseModal(context, franchiseDoc),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteFranchise(context, franchiseDoc.id),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -346,7 +377,7 @@ class _FranchisePageState extends State<FranchisePage> {
           'zip': int.parse(_zipController.text),
         },
       });
-      _pagedDataTableController.refresh(); // Refresh the table after updating
+      setState(() {}); // Refresh the UI after updating the franchise
     }
   }
 
@@ -372,7 +403,7 @@ class _FranchisePageState extends State<FranchisePage> {
     if (confirmed == true) {
       if (widget.franchiseID.isNotEmpty) {
         await _firestore.collection('franchise').doc(widget.franchiseID).collection('list').doc(id).delete();
-        _pagedDataTableController.refresh(); // Refresh the table after deletion
+        setState(() {}); // Refresh the UI after deletion
       }
     }
   }

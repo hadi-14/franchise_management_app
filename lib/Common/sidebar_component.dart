@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
@@ -14,7 +16,8 @@ class SidebarComponent extends StatefulWidget {
   _SidebarComponentState createState() => _SidebarComponentState();
 }
 
-class _SidebarComponentState extends State<SidebarComponent> {
+class _SidebarComponentState extends State<SidebarComponent>
+    with AutomaticKeepAliveClientMixin {
   bool isDarkMode = false;
   final _auth = FirebaseAuth.instance;
   String _userRole = 'guest';
@@ -41,13 +44,16 @@ class _SidebarComponentState extends State<SidebarComponent> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Important for AutomaticKeepAliveClientMixin
+
     final theme = FlutterFlowTheme.of(context);
     final selectedColor = theme.primary;
 
     return SideMenu(
       controller: widget.sideMenuController,
       style: SideMenuStyle(
-        displayMode: SideMenuDisplayMode.auto,
+        displayMode:
+        (Platform.isAndroid || Platform.isIOS) ? SideMenuDisplayMode.open : SideMenuDisplayMode.auto,
         hoverColor: theme.secondaryBackground,
         selectedColor: selectedColor,
         unselectedTitleTextStyle: theme.bodyMedium,
@@ -59,14 +65,16 @@ class _SidebarComponentState extends State<SidebarComponent> {
         ),
         selectedIconColor: theme.primaryText,
         itemBorderRadius: BorderRadius.circular(10),
-        itemOuterPadding:
-            const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        itemOuterPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
         itemInnerSpacing: 6,
       ),
       title: _buildUserProfile(theme),
       items: _buildMenuItems(),
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 
   Widget _buildUserProfile(FlutterFlowTheme theme) {
     final user = _auth.currentUser;
@@ -89,13 +97,12 @@ class _SidebarComponentState extends State<SidebarComponent> {
                   borderRadius: BorderRadius.circular(8),
                   child: user?.photoURL != null
                       ? Image.network(
-                          user!.photoURL!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                        )
-                      : Icon(Icons.account_circle,
-                          size: 44, color: theme.primary),
+                    user!.photoURL!,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                  )
+                      : Icon(Icons.account_circle, size: 44, color: theme.primary),
                 ),
               ),
               const SizedBox(width: 12),
@@ -125,7 +132,6 @@ class _SidebarComponentState extends State<SidebarComponent> {
   }
 
   List<SideMenuItem> _buildMenuItems() {
-    print(_userRole);
     if (_userRole == 'owner') {
       return _buildOwnerMenuItems();
     } else if (_userRole == 'staff') {
@@ -146,59 +152,59 @@ class _SidebarComponentState extends State<SidebarComponent> {
         },
         icon: const Icon(Icons.supervised_user_circle_rounded),
       ),
-      SideMenuItem(
-        title: 'Dashboard',
-        onTap: (index, _) {
-          widget.sideMenuController.changePage(1);
-        },
-        icon: const Icon(Icons.space_dashboard),
-      ),
+      // SideMenuItem(
+      //   title: 'Dashboard',
+      //   onTap: (index, _) {
+      //     widget.sideMenuController.changePage(1);
+      //   },
+      //   icon: const Icon(Icons.space_dashboard),
+      // ),
       SideMenuItem(
         title: 'Store',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(2);
+          widget.sideMenuController.changePage(1);
         },
         icon: const Icon(Icons.store),
       ),
       SideMenuItem(
         title: 'Purchase',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(3);
+          widget.sideMenuController.changePage(2);
         },
         icon: const Icon(Icons.local_grocery_store),
       ),
       SideMenuItem(
         title: 'Sales',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(4);
+          widget.sideMenuController.changePage(3);
         },
         icon: const Icon(Icons.scale_sharp),
       ),
       SideMenuItem(
         title: 'Products',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(5);
+          widget.sideMenuController.changePage(4);
         },
         icon: const Icon(Icons.assignment),
       ),
       SideMenuItem(
         title: 'Product Categories',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(6);
+          widget.sideMenuController.changePage(5);
         },
         icon: const Icon(Icons.category_rounded),
       ),
       SideMenuItem(
         title: 'Franchises',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(7);
+          widget.sideMenuController.changePage(6);
         },
         icon: const Icon(Icons.cable),
       ),
       SideMenuItem(
         title: 'Company Details',
         onTap: (index, _) {
-          widget.sideMenuController.changePage(8);
+          widget.sideMenuController.changePage(7);
         },
         icon: const Icon(Icons.grid_on_rounded),
       ),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:paged_datatable/paged_datatable.dart';
 import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'add_sales_order_page.dart';
 import 'sales_order_details_page.dart';
 
@@ -18,8 +19,6 @@ class SalesOrdersPage extends StatefulWidget {
 class _SalesOrdersPageState extends State<SalesOrdersPage> {
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final PagedDataTableController<String, DocumentSnapshot>
-      _pagedDataTableController = PagedDataTableController();
 
   @override
   void initState() {
@@ -28,41 +27,23 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
   }
 
   void _filterSalesOrders() {
-    _pagedDataTableController.refresh(); // Trigger the fetcher with new filter
+    setState(() {}); // Trigger the UI to update with the search filter
   }
 
-  Future<(List<DocumentSnapshot>, String?)> _fetchSalesOrders(
-      int pageSize,
-      SortModel? sortModel,
-      FilterModel filterModel,
-      String? pageToken,
-      String franchiseID) async {
+  Future<List<DocumentSnapshot>> _fetchSalesOrders(String franchiseID) async {
     Query query =
-        _firestore.collection('sales').doc(franchiseID).collection('list');
+    _firestore.collection('sales').doc(franchiseID).collection('list');
 
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
           .where('OrderID', isGreaterThanOrEqualTo: _searchController.text)
           .where('OrderID',
-              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+          isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
     }
 
-    // Apply pagination
-    if (pageToken != null) {
-      query = query.startAfterDocument(await _firestore
-          .collection('sales')
-          .doc(franchiseID)
-          .collection('list')
-          .doc(pageToken)
-          .get());
-    }
-
-    final snapshot = await query.limit(pageSize).get();
-    final nextPageToken =
-        snapshot.docs.isNotEmpty ? snapshot.docs.last.id : null;
-
-    return (snapshot.docs, nextPageToken);
+    final snapshot = await query.get();
+    return snapshot.docs;
   }
 
   Future<void> _deleteSalesOrder(
@@ -71,8 +52,7 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Delete'),
-        content:
-            const Text('Are you sure you want to delete this sales order?'),
+        content: const Text('Are you sure you want to delete this sales order?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -94,7 +74,7 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
             .collection('list')
             .doc(id)
             .delete();
-        _pagedDataTableController.refresh(); // Refresh the table after deletion
+        setState(() {}); // Refresh the UI after deletion
       }
     }
   }
@@ -103,6 +83,9 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
     final userState = Provider.of<UserState>(context);
+
+    // Check if the current platform is Android, iOS, or Web
+    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
 
     return Scaffold(
       appBar: AppBar(
@@ -139,118 +122,178 @@ class _SalesOrdersPageState extends State<SalesOrdersPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * .75,
-                  child: PagedDataTable<String, DocumentSnapshot>(
-                    controller: _pagedDataTableController,
-                    fetcher: (pageSize, sortModel, filterModel, pageToken) =>
-                        _fetchSalesOrders(pageSize, sortModel, filterModel,
-                            pageToken, userState.franchiseID),
-                    columns: [
-                      TableColumn(
-                        title: const Text("OrderID"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['OrderID'].toString());
-                        },
-                        id: 'OrderID',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("State"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['State']);
-                        },
-                        id: 'State',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Net Total"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['NetTotal'].toString());
-                        },
-                        id: 'NetTotal',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Created By"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          return Text(data['createdBy'].toString());
-                        },
-                        id: 'CreatedBy',
-                        sortable: true,
-                        size: const FractionalColumnSize(0.15),
-                      ),
-                      TableColumn(
-                        title: const Text("Actions"),
-                        cellBuilder: (context, item, index) {
-                          final data = item.data() as Map<String, dynamic>;
-                          final createdBy = data['createdBy'];
-                          final user = userState.userName;
+              child: FutureBuilder<List<DocumentSnapshot>>(
+                future: _fetchSalesOrders(userState.franchiseID),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final data = snapshot.data ?? [];
+                  if (data.isEmpty) {
+                    return const Center(child: Text('No sales orders found.'));
+                  }
 
-                          return Row(
-                            children: [
-                              if (userState.role == 'owner' ||
-                                  (userState.role == 'franchisee' &&
-                                      user == createdBy))
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => AddSalesOrderPage(
-                                            salesOrderId: item.id),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              IconButton(
-                                icon: const Icon(Icons.print_rounded),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          SalesOrderDetailsPage(
-                                              orderId: item.id),
-                                    ),
-                                  );
-                                },
-                              ),
-                              if (userState.role == 'owner' ||
-                                  (userState.role == 'franchisee' &&
-                                      user == createdBy))
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  onPressed: () => _deleteSalesOrder(
-                                      context, item.id, userState.franchiseID),
-                                ),
-                            ],
-                          );
-                        },
-                        size: const FractionalColumnSize(0.2),
-                      ),
-                    ],
-                    initialPageSize: 10,
-                    pageSizes: const [5, 10, 20, 50],
-                    configuration: const PagedDataTableConfiguration(
-                      copyItems: true,
-                    ),
-                  ),
-                ),
+                  return isMobile
+                      ? _buildCardLayout(data, theme, userState)
+                      : _buildTableLayout(data, theme, userState);
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme, UserState userState) {
+    return ListView.builder(
+      itemCount: data.length,
+      itemBuilder: (context, index) {
+        final order = data[index].data() as Map<String, dynamic>;
+        final createdBy = order['createdBy'];
+        final user = userState.userName;
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Order ID: ${order['OrderID']}',
+                  style: theme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'State: ${order['State']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Net Total: \$${order['NetTotal'].toString()}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Created By: ${order['createdBy']}',
+                  style: theme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (userState.role == 'owner' ||
+                        (userState.role == 'franchisee' &&
+                            user == createdBy))
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddSalesOrderPage(
+                                  salesOrderId: data[index].id),
+                            ),
+                          );
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.print_rounded),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SalesOrderDetailsPage(orderId: data[index].id),
+                          ),
+                        );
+                      },
+                    ),
+                    if (userState.role == 'owner' ||
+                        (userState.role == 'franchisee' && user == createdBy))
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _deleteSalesOrder(
+                            context, data[index].id, userState.franchiseID),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTableLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme, UserState userState) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Order ID')),
+          DataColumn(label: Text('State')),
+          DataColumn(label: Text('Net Total')),
+          DataColumn(label: Text('Created By')),
+          DataColumn(label: Text('Actions')),
+        ],
+        rows: data.map((orderDoc) {
+          final order = orderDoc.data() as Map<String, dynamic>;
+          final createdBy = order['createdBy'];
+          final user = userState.userName;
+
+          return DataRow(cells: [
+            DataCell(Text(order['OrderID'].toString())),
+            DataCell(Text(order['State'])),
+            DataCell(Text(order['NetTotal'].toString())),
+            DataCell(Text(order['createdBy'].toString())),
+            DataCell(
+              Row(
+                children: [
+                  if (userState.role == 'owner' ||
+                      (userState.role == 'franchisee' && user == createdBy))
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddSalesOrderPage(
+                                salesOrderId: orderDoc.id),
+                          ),
+                        );
+                      },
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.print_rounded),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SalesOrderDetailsPage(orderId: orderDoc.id),
+                        ),
+                      );
+                    },
+                  ),
+                  if (userState.role == 'owner' ||
+                      (userState.role == 'franchisee' && user == createdBy))
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _deleteSalesOrder(
+                          context, orderDoc.id, userState.franchiseID),
+                    ),
+                ],
+              ),
+            ),
+          ]);
+        }).toList(),
       ),
     );
   }
