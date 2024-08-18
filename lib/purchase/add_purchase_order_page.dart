@@ -226,7 +226,7 @@ class _AddPurchaseOrderPageState extends State<AddPurchaseOrderPage> with Automa
       final data = docSnapshot.data();
       if (data != null) {
         setState(() {
-          _orderIDController.text = data['OrderID'];
+          _orderIDController.text = data['OrderID'].toString();
           _selectedStore = data['StoreID'];
           _selectedState = data['State'];
           _previousState = data['State'];

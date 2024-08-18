@@ -92,7 +92,7 @@ class _ProductsPageState extends State<ProductsPage> {
                   style: theme.headlineMedium,
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _showProductDetailsPage(context),
+                  onPressed: () => _showProductDetailsPopup(context),
                   icon: const Icon(Icons.add),
                   label: const Text('Add Product'),
                   style: ElevatedButton.styleFrom(
@@ -213,7 +213,7 @@ class _ProductsPageState extends State<ProductsPage> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.edit),
-                      onPressed: () => _showProductDetailsPage(
+                      onPressed: () => _showProductDetailsPopup(
                           context,
                           productDoc: data[index]),
                     ),
@@ -261,7 +261,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit),
-                    onPressed: () => _showProductDetailsPage(
+                    onPressed: () => _showProductDetailsPopup(
                         context,
                         productDoc: productDoc),
                   ),
@@ -278,19 +278,142 @@ class _ProductsPageState extends State<ProductsPage> {
     );
   }
 
-  void _showProductDetailsPage(BuildContext context,
-      {DocumentSnapshot? productDoc}) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductDetailsPage(
-          productDoc: productDoc,
-          categories: _categories,
-          franchiseID: widget.franchiseID,
+  void _showProductDetailsPopup(BuildContext context,
+      {DocumentSnapshot? productDoc}) {
+    final TextEditingController productNameController = TextEditingController();
+    final TextEditingController priceController = TextEditingController();
+    final TextEditingController quantityController = TextEditingController();
+    final TextEditingController upcCodeController = TextEditingController();
+    String? selectedCategoryID;
+
+    final theme = FlutterFlowTheme.of(context);
+
+    if (productDoc != null) {
+      final data = productDoc.data() as Map<String, dynamic>;
+      productNameController.text = data['productName'];
+      priceController.text = data['price'].toString();
+      quantityController.text = data['quantity'].toString();
+      upcCodeController.text = data['upcCode'].toString();
+      selectedCategoryID = data['categoryID'];
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTextField('Product Name', productNameController, theme),
+                _buildTextField('Price', priceController, theme,
+                    isNumeric: true),
+                _buildTextField('Quantity', quantityController, theme,
+                    isNumeric: true),
+                _buildTextField('UPC Code', upcCodeController, theme),
+                const SizedBox(height: 16),
+                DropdownButton<String>(
+                  borderRadius: BorderRadius.circular(12.0),
+                  value: selectedCategoryID,
+                  hint: const Text('Select Category'),
+                  items: _categories.entries
+                      .map((entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedCategoryID = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final productData = {
+                      'productName': productNameController.text,
+                      'price': double.parse(priceController.text),
+                      'quantity': int.parse(quantityController.text),
+                      'upcCode': upcCodeController.text,
+                      'categoryID': selectedCategoryID,
+                    };
+
+                    if (productDoc == null) {
+                      final productID = await _getNextProductID();
+                      await _firestore
+                          .collection('product')
+                          .doc(widget.franchiseID)
+                          .collection('list')
+                          .add({
+                        'productID': productID,
+                        ...productData,
+                      });
+                    } else {
+                      await _firestore
+                          .collection('product')
+                          .doc(widget.franchiseID)
+                          .collection('list')
+                          .doc(productDoc.id)
+                          .update(productData);
+                    }
+                    Navigator.pop(context);
+                    setState(() {}); // Refresh the UI
+                  },
+                  child: Text(productDoc == null
+                      ? 'Add Product'
+                      : 'Update Product'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTextField(
+      String label, TextEditingController controller, FlutterFlowTheme theme,
+      {bool isNumeric = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: theme.labelLarge,
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: theme.alternate, width: 2.0),
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: theme.primary, width: 2.0),
+            borderRadius: BorderRadius.circular(12.0),
+          ),
         ),
+        style: theme.bodyLarge,
       ),
     );
-    setState(() {}); // Refresh the UI after returning from the details page
+  }
+
+  Future<String> _getNextProductID() async {
+    final snapshot = await _firestore
+        .collection('product')
+        .doc(widget.franchiseID)
+        .collection('list')
+        .orderBy('productID', descending: true)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      final lastID = int.parse(snapshot.docs.first['productID']);
+      return (lastID + 1).toString();
+    }
+    return '1';
   }
 
   Future<void> _deleteProduct(BuildContext context, String id) async {
@@ -323,161 +446,5 @@ class _ProductsPageState extends State<ProductsPage> {
         setState(() {}); // Refresh the UI after deletion
       }
     }
-  }
-}
-
-class ProductDetailsPage extends StatefulWidget {
-  final DocumentSnapshot? productDoc;
-  final Map<String, String> categories;
-  final String franchiseID;
-
-  const ProductDetailsPage(
-      {super.key, this.productDoc, required this.categories, required this.franchiseID});
-
-  @override
-  _ProductDetailsPageState createState() => _ProductDetailsPageState();
-}
-
-class _ProductDetailsPageState extends State<ProductDetailsPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController _productNameController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _upcCodeController = TextEditingController();
-  String? _selectedCategoryID;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.productDoc != null) {
-      final data = widget.productDoc!.data() as Map<String, dynamic>;
-      _productNameController.text = data['productName'];
-      _priceController.text = data['price'].toString();
-      _quantityController.text = data['quantity'].toString();
-      _upcCodeController.text = data['upcCode'].toString();
-      _selectedCategoryID = data['categoryID'];
-    }
-  }
-
-  Future<void> _saveProduct() async {
-    final productData = {
-      'productName': _productNameController.text,
-      'price': double.parse(_priceController.text),
-      'quantity': int.parse(_quantityController.text),
-      'upcCode': _upcCodeController.text,
-      'categoryID': _selectedCategoryID,
-    };
-
-    if (widget.productDoc == null) {
-      final productID = await _getNextProductID();
-      await _firestore
-          .collection('product')
-          .doc(widget.franchiseID)
-          .collection('list')
-          .add({
-        'productID': productID,
-        ...productData,
-      });
-    } else {
-      await _firestore
-          .collection('product')
-          .doc(widget.franchiseID)
-          .collection('list')
-          .doc(widget.productDoc!.id)
-          .update(productData);
-    }
-    Navigator.pop(context);
-  }
-
-  Future<String> _getNextProductID() async {
-    final snapshot = await _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('list')
-        .orderBy('productID', descending: true)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      final lastID = int.parse(snapshot.docs.first['productID']);
-      return (lastID + 1).toString();
-    }
-    return '1';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FlutterFlowTheme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.productDoc == null ? 'Add Product' : 'Edit Product',
-            style: theme.headlineMedium),
-        backgroundColor: theme.primary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildTextField('Product Name', _productNameController, theme),
-              _buildTextField('Price', _priceController, theme,
-                  isNumeric: true),
-              _buildTextField('Quantity', _quantityController, theme,
-                  isNumeric: true),
-              _buildTextField('UPC Code', _upcCodeController, theme),
-              const SizedBox(height: 16),
-              DropdownButton<String>(
-                borderRadius: BorderRadius.circular(12.0),
-                value: _selectedCategoryID,
-                hint: const Text('Select Category'),
-                items: widget.categories.entries
-                    .map((entry) => DropdownMenuItem(
-                  value: entry.key,
-                  child: Text(entry.value),
-                ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategoryID = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _saveProduct,
-                child: Text(widget.productDoc == null
-                    ? 'Add Product'
-                    : 'Update Product'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-      String label, TextEditingController controller, FlutterFlowTheme theme,
-      {bool isNumeric = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: theme.labelLarge,
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.alternate, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.primary, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-        ),
-        style: theme.bodyLarge,
-      ),
-    );
   }
 }
