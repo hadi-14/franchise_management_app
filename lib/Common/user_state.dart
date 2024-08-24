@@ -8,13 +8,19 @@ class UserState with ChangeNotifier {
 
   User? _user;
   String _franchiseID = '';
+  String _franchiseInternalID = '';
   String _role = '';
   String? _customerID;
+  Map<String, dynamic> _address = {};
 
   User? get user => _user;
   String get franchiseID => _franchiseID;
+  String get franchiseInternalID => _franchiseInternalID;
   String get role => _role;
+  Map<String, dynamic> get address => _address;
   String get userName => _auth.currentUser!.displayName!;
+  String get profilePhoto => _auth.currentUser!.photoURL!;
+  String get email => _auth.currentUser!.email!;
   String? get customerID => _customerID;
 
   UserState() {
@@ -37,6 +43,8 @@ class UserState with ChangeNotifier {
       _franchiseID = data?['franchiseID'] ?? '';
       _role = data?['role'] ?? '';
       _customerID = data?['customerID'] ?? '';
+      _address = data?['Address'] ?? {};
+      _franchiseInternalID = data?['franchiseInternalID'] ?? '';
       notifyListeners();
     }
   }

@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.0+01
+version: 0.5.0+01
 
 environment:
   sdk: ">=3.4.3 <4.0.0"
@@ -65,6 +65,8 @@ dependencies:
   mobile_scanner: ^5.1.1
   mailer: ^6.1.2
   flutter_launcher_icons: ^0.13.1
+  flutter_floating_bottom_bar: ^1.2.0
+  flutter_svg: ^2.0.10+1
   # mailto: ^2.0.0
 
 dev_dependencies:
@@ -96,9 +98,33 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/logo_full.png
+
+    - assets/Icons/Create Account/padlock.png
+    - assets/Icons/Create Account/email.png
+    - assets/Icons/Login Page/google.png
+    - assets/Icons/Create Account/user.png
+    - assets/Icons/Create Account/phone.png
+    - assets/Icons/Create Account/home.png
+    - assets/Icons/Create Account/location.png
+    - assets/Icons/Create Account/hashtag.png
+    - assets/Icons/Create Account/add-photo.png
+    
+    - assets/Icons/Navigation bar/box-open.png
+    - assets/Icons/Navigation bar/box-open-unactive.png
+    - assets/Icons/Navigation bar/order-history.png
+    - assets/Icons/Navigation bar/order-history-unactive.png
+    - assets/Icons/Navigation bar/settings.png
+    - assets/Icons/Navigation bar/settings-unactive.png
+    - assets/Icons/Navigation bar/shop.png
+    - assets/Icons/Navigation bar/shop-unactive.png
+
+    - assets/Icons/order-history.png
+    - assets/Icons/franchises.png
+    
+    - assets/Icons/trash.png
+    - assets/Icons/mark.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

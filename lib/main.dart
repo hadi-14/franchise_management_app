@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:paged_datatable/paged_datatable.dart';
+import 'package:franchise_management_app/order/order_history.dart';
 import 'package:provider/provider.dart';
 import '.env.dart';
-import 'auth/firebase_login.dart';
-import 'auth/edit_credentials.dart';
+import 'auth/user_setting.dart';
 import 'auth/complete_profile.dart';
 import 'Common/flutter_flow_theme.dart';
 import 'Common/user_state.dart';
 import 'HomePage.dart';
+import 'auth/landing_page.dart';
 import 'firebase_options.dart';
+import 'AppState.dart';
+import 'order/order_now.dart'; // Import the AppState
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,11 +26,11 @@ void main() async {
   Stripe.urlScheme = 'flutterstripe';
   await Stripe.instance.applySettings();
 
-
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserState()),
+        ChangeNotifierProvider(create: (_) => AppState()), // Include AppState
       ],
       child: const MyApp(),
     ),
@@ -50,10 +52,12 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const AuthHandler(),
-        '/login': (context) => const LoginPage(),
-        '/editCredentials': (context) => const EditCredentialsPage(),
+        '/login': (context) => const LandingPage(),
+        '/UserSetting': (context) => UserSetting(),
+        '/homePage': (context) => const HomePage(),
+        '/order-history': (context) => const OrderHistoryPage(),
+        '/franchises': (context) => const OrderHistoryPage(),
       },
-      localizationsDelegates: const [PagedDataTableLocalization.delegate],
     );
   }
 }
@@ -76,6 +80,7 @@ class _AuthHandlerState extends State<AuthHandler> {
   }
 
   Future<void> _checkLoginStatus() async {
+
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
         setState(() {
@@ -99,7 +104,7 @@ class _AuthHandlerState extends State<AuthHandler> {
         return const CompleteProfilePage();
       }
     } else {
-      return const LoginPage();
+      return const LandingPage();
     }
   }
 }
