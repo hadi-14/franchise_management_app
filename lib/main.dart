@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:franchise_management_app/order/order_history.dart';
 import 'package:provider/provider.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import '.env.dart';
 import 'auth/user_setting.dart';
 import 'auth/complete_profile.dart';
@@ -11,9 +12,9 @@ import 'Common/flutter_flow_theme.dart';
 import 'Common/user_state.dart';
 import 'HomePage.dart';
 import 'auth/landing_page.dart';
+import 'order/order_history.dart';
 import 'firebase_options.dart';
 import 'AppState.dart';
-import 'order/order_now.dart'; // Import the AppState
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

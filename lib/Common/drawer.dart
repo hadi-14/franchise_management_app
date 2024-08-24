@@ -16,6 +16,7 @@ class DrawerWidget extends StatelessWidget {
     final theme = FlutterFlowTheme.of(context);
 
     Future<void> _signOut() async {
+      
       await _auth.signOut();
       Navigator.pushReplacementNamed(context, '/login');
     }

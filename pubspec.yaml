@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.5.0+01
+version: 0.4.1+01
 
 environment:
   sdk: ">=3.4.3 <4.0.0"
@@ -39,12 +39,6 @@ dependencies:
   shared_preferences: ^2.2.3
   easy_sidemenu: ^0.6.0
   firebase_auth: ^5.1.2
-  # google_sign_in_all_platforms: ^0.0.4
-  google_sign_in_all_platforms:
-    git:
-      url: https://github.com/hadi-14/google_sign_in_all_platforms
-      ref: main
-      path: google_sign_in_all_platforms
   cloud_firestore: ^5.1.0
   paged_datatable: ^2.1.1
   fl_chart: ^0.68.0
@@ -67,6 +61,7 @@ dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_floating_bottom_bar: ^1.2.0
   flutter_svg: ^2.0.10+1
+  google_sign_in: ^6.2.1
   # mailto: ^2.0.0
 
 dev_dependencies:

@@ -41,7 +41,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           children: [
             Positioned(
               left: 0,
-              top: 113,
+              top: 33,
               child: Container(
                 width: MediaQuery.of(context).size.width,
                 height: 171,
@@ -110,7 +110,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             ),
             Positioned(
               left: 20,
-              top: 317,
+              top: 227,
               child: Text(
                 widget.product['productName'],
                 style: theme.displayMedium.copyWith(
@@ -123,7 +123,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             ),
             Positioned(
               left: 20,
-              top: 561,
+              top: MediaQuery.of(context).size.height - 300,
               child: Container(
                 width: MediaQuery.of(context).size.width - 40,
                 height: 73,
@@ -162,29 +162,30 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          width: MediaQuery.of(context).size.width - 99 - 150,
+                          width: MediaQuery.of(context).size.width - 250,
                           child: Text(
                             widget.product['productName'],
                             style: theme.titleMedium?.copyWith(
                               color: const Color(0xFF353934),
-                              fontSize: 16,
+                              fontSize: 14,
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
                         Text(
                           '\$${widget.product['price'].toString()}',
                           style: theme.bodySmall?.copyWith(
                             color: const Color(0xFF353934),
-                            fontSize: 14,
+                            fontSize: 12,
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        const SizedBox(height: 2),
                       ],
                     ),
                     Row(
@@ -224,7 +225,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             ),
             Positioned(
               left: 21,
-              top: 351,
+              top: 266,
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.9,
                 child: Text(

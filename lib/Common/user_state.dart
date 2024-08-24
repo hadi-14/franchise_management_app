@@ -10,6 +10,7 @@ class UserState with ChangeNotifier {
   String _franchiseID = '';
   String _franchiseInternalID = '';
   String _role = '';
+  String _phoneNumber = '';
   String? _customerID;
   Map<String, dynamic> _address = {};
 
@@ -18,10 +19,11 @@ class UserState with ChangeNotifier {
   String get franchiseInternalID => _franchiseInternalID;
   String get role => _role;
   Map<String, dynamic> get address => _address;
-  String get userName => _auth.currentUser!.displayName!;
-  String get profilePhoto => _auth.currentUser!.photoURL!;
-  String get email => _auth.currentUser!.email!;
+  String get userName => _auth.currentUser?.displayName ?? 'Guest'; // Safe access
+  String get profilePhoto => _auth.currentUser?.photoURL ?? 'https://via.placeholder.com/150'; // Safe access with default
+  String get email => _auth.currentUser?.email ?? 'No email'; // Safe access with default
   String? get customerID => _customerID;
+  String? get phoneNumber => _phoneNumber;
 
   UserState() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -45,11 +47,13 @@ class UserState with ChangeNotifier {
       _customerID = data?['customerID'] ?? '';
       _address = data?['Address'] ?? {};
       _franchiseInternalID = data?['franchiseInternalID'] ?? '';
+      _phoneNumber = data?['phoneNumber'] ?? '';
       notifyListeners();
     }
   }
 
-  Future<void> _setUserData(key, data) async {
+  // Made this method public by removing the leading underscore
+  Future<void> setUserData(String key, dynamic data) async {
     if (_user != null) {
       await _firestore.collection('user').doc(_user!.uid).update({key: data});
     }

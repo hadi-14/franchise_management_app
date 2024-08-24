@@ -1,9 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:franchise_management_app/auth/signup_page.dart';
-import 'package:google_sign_in_all_platforms/google_sign_in_all_platforms.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../Common/flutter_flow_theme.dart';
-import 'verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,20 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late GoogleSignIn _googleSignIn;
-
-  @override
-  void initState() {
-    super.initState();
-    _googleSignIn = GoogleSignIn(
-      params: const GoogleSignInParams(
-        clientId:
-            '1018649504290-9sk31otsj5r3ev4ceib8qs66qklr14oi.apps.googleusercontent.com',
-        clientSecret: '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',
-        redirectPort: 4321,
-      ),
-    );
-  }
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   Future<void> _signInWithEmail() async {
     try {
@@ -47,18 +33,23 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _signInWithGoogle() async {
     try {
-      final googleAuth = await _googleSignIn.signInOnline();
-
-      if (googleAuth != null) {
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        await _auth.signInWithCredential(credential);
-
-        Navigator.pushReplacementNamed(context, '/homePage');
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        // The user canceled the sign-in
+        return;
       }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await _auth.signInWithCredential(credential);
+
+      Navigator.pushReplacementNamed(context, '/homePage');
     } catch (e) {
       print(e);
     }

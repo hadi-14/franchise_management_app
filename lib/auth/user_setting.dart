@@ -20,46 +20,40 @@ class _UserSettingState extends State<UserSetting> {
   final TextEditingController _phoneController = TextEditingController();
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+  String? _profilePhotoUrl;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _fetchUserData();
   }
 
   Future<void> _fetchUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    final userState = Provider.of<UserState>(context, listen: false);
 
-      setState(() {
-        _displayNameController.text = user.displayName ?? '';
-        _emailController.text = user.email ?? '';
-        _phoneController.text = userDoc['phoneNumber'] ?? '';
-      });
-    }
+    setState(() {
+      _displayNameController.text = userState.userName;
+      _emailController.text = userState.email;
+      _phoneController.text = userState.phoneNumber ?? '';
+      _profilePhotoUrl = userState.profilePhoto;
+    });
   }
 
   Future<void> _saveChanges() async {
+    final userState = Provider.of<UserState>(context, listen: false);
     final user = FirebaseAuth.instance.currentUser;
+
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'phoneNumber': _phoneController.text,
-      });
+      await userState.setUserData(
+        'phoneNumber',
+        _phoneController.text,
+      );
 
       await user.updateEmail(_emailController.text);
-
       await user.updateDisplayName(_displayNameController.text);
 
-      if (_profileImage != null) {
-        // Upload image and update user's photo URL
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully!')),
+        const SnackBar(content: Text('Profile updated successfully!'), duration: Duration(seconds: 1),),
       );
     }
   }
@@ -88,41 +82,49 @@ class _UserSettingState extends State<UserSetting> {
           child: Stack(
             children: [
               Positioned(
-                left: (screenWidth - 75) / 2,
-                top: screenHeight * 0.1,
+                left: (screenWidth - 120) / 2, // Adjusted size and position
+                top: screenHeight * 0.125, // Adjusted position
                 child: GestureDetector(
                   onTap: _pickImage,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       CircleAvatar(
-                        radius: 37.5,
+                        radius: 60, // Increased the radius for a larger avatar
                         backgroundColor: theme.primaryColor,
                         child: CircleAvatar(
-                          radius: 36,
+                          radius: 58,
                           backgroundColor: Colors.white,
                           backgroundImage: _profileImage != null
                               ? FileImage(_profileImage!)
-                              : null,
-                          child: _profileImage == null
-                              ? Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: theme.secondary,
-                                      width: 1,
-                                    ),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const SizedBox(),
-                                )
-                              : null,
+                              : _profilePhotoUrl != null
+                                  ? NetworkImage(_profilePhotoUrl!)
+                                  : null,
+                          child:
+                              _profileImage == null && _profilePhotoUrl == null
+                                  ? Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: theme.secondary,
+                                          width: 1,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.grey,
+                                        size: 58,
+                                      ),
+                                    )
+                                  : null,
                         ),
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: CircleAvatar(
-                          radius: 15,
+                          radius:
+                              18, // Slightly increased size of the camera icon
                           backgroundColor: theme.secondary,
                           child: const Icon(
                             Icons.camera_alt,
@@ -158,7 +160,8 @@ class _UserSettingState extends State<UserSetting> {
                 ),
               ),
               Positioned(
-                top: screenHeight * 0.25,
+                top: screenHeight *
+                    0.28, // Adjusted position to account for larger avatar
                 left: 0,
                 right: 0,
                 child: Column(
@@ -186,8 +189,9 @@ class _UserSettingState extends State<UserSetting> {
               ),
               Positioned(
                 left: 26,
-                top: screenHeight * 0.35,
-                child: Container(
+                top: screenHeight *
+                    0.4, // Adjusted position to account for larger avatar
+                child: SizedBox(
                   width: screenWidth - 52,
                   child: Column(
                     children: [
@@ -273,7 +277,7 @@ class _UserSettingState extends State<UserSetting> {
         padding: const EdgeInsets.symmetric(horizontal: 21),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: 18,
               height: 18,
               child: Image.asset(imageUrl),
@@ -292,6 +296,9 @@ class _UserSettingState extends State<UserSetting> {
                   ),
                   border: InputBorder.none,
                 ),
+                keyboardType: label == 'Phone Number'
+                    ? TextInputType.phone
+                    : TextInputType.text, // Ensure phone number is editable
               ),
             ),
           ],

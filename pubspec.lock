@@ -185,14 +185,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.5"
-  extension_google_sign_in_as_googleapis_auth:
-    dependency: transitive
-    description:
-      name: extension_google_sign_in_as_googleapis_auth
-      sha256: bcf4f8dedcc1e66ce5fe98fbd98cc86ed25ad7fce0511e8d6cdc46ccbf421e8e
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.12"
   fake_async:
     dependency: transitive
     description:
@@ -422,47 +414,13 @@ packages:
     source: hosted
     version: "0.3.1+4"
   google_sign_in:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: google_sign_in
       sha256: "0b8787cb9c1a68ad398e8010e8c8766bfa33556d2ab97c439fb4137756d7308f"
       url: "https://pub.dev"
     source: hosted
     version: "6.2.1"
-  google_sign_in_all_platforms:
-    dependency: "direct main"
-    description:
-      path: google_sign_in_all_platforms
-      ref: main
-      resolved-ref: "7b44439ea168b69340f6fdc8f932fe995b30841b"
-      url: "https://github.com/hadi-14/google_sign_in_all_platforms"
-    source: git
-    version: "0.0.5"
-  google_sign_in_all_platforms_desktop:
-    dependency: transitive
-    description:
-      name: google_sign_in_all_platforms_desktop
-      sha256: e584a9c2ac0aff35630088084b55f7b6c0a7ac560bc1888c349d70c905011740
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.1+1"
-  google_sign_in_all_platforms_interface:
-    dependency: transitive
-    description:
-      name: google_sign_in_all_platforms_interface
-      sha256: "52d4428cc249f1e58910abd8cf1346523e0f17efa61ebb2e72b5265be51a0666"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.5"
-  google_sign_in_all_platforms_mobile:
-    dependency: transitive
-    description:
-      path: google_sign_in_all_platforms_mobile
-      ref: patch-1
-      resolved-ref: "34b31425bfa9b4039ece715ba501ba788ee9dd80"
-      url: "https://github.com/hadi-14/google_sign_in_all_platforms.git"
-    source: git
-    version: "0.0.2"
   google_sign_in_android:
     dependency: transitive
     description:
@@ -495,14 +453,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.12.4+2"
-  googleapis_auth:
-    dependency: transitive
-    description:
-      name: googleapis_auth
-      sha256: befd71383a955535060acde8792e7efc11d2fccd03dd1d3ec434e85b68775938
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   html:
     dependency: transitive
     description:
@@ -519,14 +469,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.2"
-  http_methods:
-    dependency: transitive
-    description:
-      name: http_methods
-      sha256: "6bccce8f1ec7b5d701e7921dca35e202d425b57e317ba1a37f2638590e29e566"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
   http_parser:
     dependency: transitive
     description:
@@ -911,22 +853,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.0"
-  shelf:
-    dependency: transitive
-    description:
-      name: shelf
-      sha256: ad29c505aee705f41a4d8963641f91ac4cee3c8fad5947e033390a7bd8180fa4
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.1"
-  shelf_router:
-    dependency: transitive
-    description:
-      name: shelf_router
-      sha256: f5e5d492440a7fb165fe1e2e1a623f31f734d3370900070b2b1e0d0428d59864
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.4"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1036,70 +962,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.2"
-  url_launcher:
-    dependency: transitive
-    description:
-      name: url_launcher
-      sha256: "21b704ce5fa560ea9f3b525b43601c678728ba46725bab9b01187b4831377ed3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.3.0"
-  url_launcher_android:
-    dependency: transitive
-    description:
-      name: url_launcher_android
-      sha256: e35a698ac302dd68e41f73250bd9517fe3ab5fa4f18fe4647a0872db61bacbab
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.3.10"
-  url_launcher_ios:
-    dependency: transitive
-    description:
-      name: url_launcher_ios
-      sha256: e43b677296fadce447e987a2f519dcf5f6d1e527dc35d01ffab4fff5b8a7063e
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.3.1"
-  url_launcher_linux:
-    dependency: transitive
-    description:
-      name: url_launcher_linux
-      sha256: e2b9622b4007f97f504cd64c0128309dfb978ae66adbe944125ed9e1750f06af
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
-  url_launcher_macos:
-    dependency: transitive
-    description:
-      name: url_launcher_macos
-      sha256: "9a1a42d5d2d95400c795b2914c36fdcb525870c752569438e4ebb09a2b5d90de"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
-  url_launcher_platform_interface:
-    dependency: transitive
-    description:
-      name: url_launcher_platform_interface
-      sha256: "552f8a1e663569be95a8190206a38187b531910283c3e982193e4f2733f01029"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.2"
-  url_launcher_web:
-    dependency: transitive
-    description:
-      name: url_launcher_web
-      sha256: "772638d3b34c779ede05ba3d38af34657a05ac55b06279ea6edd409e323dca8e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.3.3"
-  url_launcher_windows:
-    dependency: transitive
-    description:
-      name: url_launcher_windows
-      sha256: "49c10f879746271804767cb45551ec5592cdab00ee105c06dddde1a98f73b185"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.2"
   vector_graphics:
     dependency: transitive
     description:
@@ -1181,5 +1043,5 @@ packages:
     source: hosted
     version: "3.1.2"
 sdks:
-  dart: ">=3.5.0 <4.0.0"
-  flutter: ">=3.24.0"
+  dart: ">=3.4.3 <4.0.0"
+  flutter: ">=3.22.0"

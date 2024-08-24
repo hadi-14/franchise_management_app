@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
-import 'dart:io' show Platform;
 import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
@@ -10,9 +9,6 @@ import 'auth/user_setting.dart';
 import 'order/order_checkout.dart';
 import 'order/order_now.dart';
 import 'order/order_status.dart';
-import 'purchase/purchase_all.dart';
-import 'order/order_history.dart';
-import 'store/store_details.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
