@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -43,6 +44,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
@@ -81,7 +87,6 @@ class _AuthHandlerState extends State<AuthHandler> {
   }
 
   Future<void> _checkLoginStatus() async {
-
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
         setState(() {

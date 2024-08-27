@@ -11,6 +11,7 @@ class UserState with ChangeNotifier {
   String _franchiseInternalID = '';
   String _role = '';
   String _phoneNumber = '';
+  String _company = '';
   String? _customerID;
   Map<String, dynamic> _address = {};
 
@@ -24,6 +25,7 @@ class UserState with ChangeNotifier {
   String get email => _auth.currentUser?.email ?? 'No email'; // Safe access with default
   String? get customerID => _customerID;
   String? get phoneNumber => _phoneNumber;
+  String? get company => _company;
 
   UserState() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -48,6 +50,7 @@ class UserState with ChangeNotifier {
       _address = data?['Address'] ?? {};
       _franchiseInternalID = data?['franchiseInternalID'] ?? '';
       _phoneNumber = data?['phoneNumber'] ?? '';
+      _company = data?['Company'] ?? '';
       notifyListeners();
     }
   }

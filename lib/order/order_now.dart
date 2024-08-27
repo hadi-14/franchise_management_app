@@ -7,7 +7,10 @@ import 'dart:io' show Platform;
 import '../Common/drawer.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
+import '../product/add_products.dart';
+import '../product/product_categories.dart';
 import '../product/product_detail_view.dart';
+import 'package:change_case/change_case.dart';
 
 class OrderNowFranchisePage extends StatefulWidget {
   final String franchiseID;
@@ -18,12 +21,17 @@ class OrderNowFranchisePage extends StatefulWidget {
   _OrderNowFranchisePageState createState() => _OrderNowFranchisePageState();
 }
 
-class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
+class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
+    with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedCategoryID;
   Map<String, String> _categories = {};
+  bool _isExpanded = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
@@ -32,6 +40,29 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
     _searchController.addListener(() {
       setState(() {}); // Update the UI when the search text changes
     });
+
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _scaleAnimation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutBack,
+    ));
+
+    _opacityAnimation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCategories() async {
@@ -59,9 +90,11 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
     // Apply search filter
     if (_searchController.text.isNotEmpty) {
       query = query
-          .where('productName', isGreaterThanOrEqualTo: _searchController.text)
           .where('productName',
-              isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
+              isGreaterThanOrEqualTo: _searchController.text.toCapitalCase())
+          .where('productName',
+              isLessThanOrEqualTo:
+                  '${_searchController.text.toCapitalCase()}\uf8ff');
     }
 
     // Apply category filter
@@ -79,35 +112,42 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
 
     final theme = FlutterFlowTheme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              width: screenWidth * 0.6,
-              height: 30,
-              decoration: ShapeDecoration(
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 1, color: Color(0x70D1A784)),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(left: 7.0, top: 5.0),
-                child: Text(
-                  'Franchise ID: ${userState.franchiseInternalID}',
-                  style: const TextStyle(
-                    color: Color(0xFF552E05),
-                    fontSize: 12,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w400,
+            !(userState.role == 'owner' || userState.role == 'staff')
+                ? Container(
+                    width: screenWidth * 0.6,
+                    height: 30,
+                    decoration: ShapeDecoration(
+                      shape: RoundedRectangleBorder(
+                        side: const BorderSide(
+                            width: 1, color: Color(0x70D1A784)),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 7.0, top: 5.0),
+                      child: Text(
+                        'Franchise ID: ${userState.franchiseInternalID}',
+                        style: const TextStyle(
+                          color: Color(0xFF552E05),
+                          fontSize: 12,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    width: screenWidth * 0.6,
+                    height: 30,
+                    child: Text(userState.company ?? '', style: theme.headlineSmall,),
                   ),
-                ),
-              ),
-            ),
             SizedBox(width: screenWidth * 0.06),
             SizedBox(
               width: 30,
@@ -118,111 +158,135 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
         ),
       ),
       drawer: DrawerWidget(), // Drawer added here
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.only(
-              top: 20.0,
-              left: screenWidth * 0.05,
-              right: screenWidth * 0.05,
-            ),
-            child: Container(
-              width: screenWidth * 0.9,
-              height: 45,
-              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
-              decoration: ShapeDecoration(
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+          Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  top: 20.0,
+                  left: screenWidth * 0.05,
+                  right: screenWidth * 0.05,
                 ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x26686868),
-                    blurRadius: 8,
-                    offset: Offset(0, 1),
-                    spreadRadius: 3,
-                  )
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: Icon(Icons.search),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Search...',
-                        border: InputBorder.none,
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF552E05),
-                        fontSize: 12,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w400,
-                      ),
+                child: Container(
+                  width: screenWidth * 0.9,
+                  height: 45,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
+                  decoration: ShapeDecoration(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    shadows: const [
+                      BoxShadow(
+                        color: Color(0x26686868),
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                        spreadRadius: 3,
+                      )
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-          if (_categories.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(
-                top: 20.0,
-                left: screenWidth * 0.05,
-                right: screenWidth * 0.05,
-              ),
-              child: DropdownButton<String>(
-                value: _selectedCategoryID,
-                hint: const Text('Select Category'),
-                isExpanded: true,
-                borderRadius: BorderRadius.circular(12.0),
-                items: _categories.entries
-                    .map(
-                      (entry) => DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: Icon(Icons.search),
                       ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategoryID = value;
-                  });
-                },
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: const InputDecoration(
+                            hintText: 'Search...',
+                            border: InputBorder.none,
+                          ),
+                          style: const TextStyle(
+                            color: Color(0xFF552E05),
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: FutureBuilder<List<DocumentSnapshot>>(
-              future: _fetchProducts(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  print('Error: ${snapshot.error}');
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final data = snapshot.data ?? [];
-                if (data.isEmpty) {
-                  return const Center(child: Text('No products found.'));
-                }
+              if (_categories.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: 20.0,
+                    left: screenWidth * 0.05,
+                    right: screenWidth * 0.05,
+                  ),
+                  child: DropdownButton<String>(
+                    value: _selectedCategoryID,
+                    hint: const Text('Select Category'),
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(12.0),
+                    items: _categories.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategoryID = value;
+                      });
+                    },
+                  ),
+                ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: FutureBuilder<List<DocumentSnapshot>>(
+                  future: _fetchProducts(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error: ${snapshot.error}');
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final data = snapshot.data ?? [];
+                    if (data.isEmpty) {
+                      return const Center(child: Text('No products found.'));
+                    }
 
-                return isMobile
-                    ? _buildCardLayout(data, theme)
-                    : _buildTableLayout(data, theme);
-              },
-            ),
+                    return _buildCardLayout(data, theme);
+                  },
+                ),
+              ),
+            ],
           ),
+          _buildOverlayOptions(theme),
         ],
       ),
+      floatingActionButton:
+          (userState.role == 'owner' || userState.role == 'staff')
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 70.0),
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      if (_isExpanded) {
+                        _animationController.reverse();
+                      } else {
+                        _animationController.forward();
+                      }
+                      setState(() {
+                        _isExpanded = !_isExpanded;
+                      });
+                    },
+                    backgroundColor: theme.primary,
+                    child: const Icon(Icons.add, color: Colors.white),
+                  ),
+                )
+              : null, // Show FAB only if user is 'owner' or 'staff'
     );
   }
 
@@ -308,218 +372,54 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage> {
     );
   }
 
-  Widget _buildTableLayout(
-      List<DocumentSnapshot> data, FlutterFlowTheme theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Product ID')),
-          DataColumn(label: Text('Name')),
-          DataColumn(label: Text('UPC Code')),
-          DataColumn(label: Text('Price')),
-          DataColumn(label: Text('Category')),
-          DataColumn(label: Text('Quantity')),
-          DataColumn(label: Text('Actions')),
-        ],
-        rows: data.map((productDoc) {
-          final product = productDoc.data() as Map<String, dynamic>;
-          final categoryName = _categories[product['categoryID']] ?? 'Unknown';
-
-          return DataRow(cells: [
-            DataCell(Text(product['productID'].toString())),
-            DataCell(Text(product['productName'])),
-            DataCell(Text(product['upcCode'])),
-            DataCell(Text(product['price'].toString())),
-            DataCell(Text(categoryName)),
-            DataCell(Text(product['quantity'].toString())),
-            DataCell(
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => _showProductDetailsPopup(context,
-                        productDoc: productDoc),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () => _deleteProduct(context, productDoc.id),
-                  ),
-                ],
+  Widget _buildOverlayOptions(FlutterFlowTheme theme) {
+    return Positioned(
+      bottom: 160,
+      right: 16,
+      child: FadeTransition(
+        opacity: _opacityAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                heroTag: 'addProduct',
+                onPressed: () {
+                  setState(() {
+                    _isExpanded = false;
+                  });
+                  _animationController.reverse();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => AddProducts(),
+                    ),
+                  );
+                },
+                backgroundColor: theme.primaryBackground,
+                child: Icon(Icons.add_shopping_cart, color: theme.primaryText),
               ),
-            ),
-          ]);
-        }).toList(),
-      ),
-    );
-  }
-
-  void _showProductDetailsPopup(BuildContext context,
-      {DocumentSnapshot? productDoc}) {
-    final TextEditingController productNameController = TextEditingController();
-    final TextEditingController priceController = TextEditingController();
-    final TextEditingController quantityController = TextEditingController();
-    final TextEditingController upcCodeController = TextEditingController();
-    String? selectedCategoryID;
-
-    final theme = FlutterFlowTheme.of(context);
-
-    if (productDoc != null) {
-      final data = productDoc.data() as Map<String, dynamic>;
-      productNameController.text = data['productName'];
-      priceController.text = data['price'].toString();
-      quantityController.text = data['quantity'].toString();
-      upcCodeController.text = data['upcCode'].toString();
-      selectedCategoryID = data['categoryID'];
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTextField('Product Name', productNameController, theme),
-                _buildTextField('Price', priceController, theme,
-                    isNumeric: true),
-                _buildTextField('Quantity', quantityController, theme,
-                    isNumeric: true),
-                _buildTextField('UPC Code', upcCodeController, theme),
-                const SizedBox(height: 16),
-                DropdownButton<String>(
-                  borderRadius: BorderRadius.circular(12.0),
-                  value: selectedCategoryID,
-                  hint: const Text('Select Category'),
-                  items: _categories.entries
-                      .map((entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedCategoryID = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    final productData = {
-                      'productName': productNameController.text,
-                      'price': double.parse(priceController.text),
-                      'quantity': int.parse(quantityController.text),
-                      'upcCode': upcCodeController.text,
-                      'categoryID': selectedCategoryID,
-                    };
-
-                    if (productDoc == null) {
-                      final productID = await _getNextProductID();
-                      await _firestore
-                          .collection('product')
-                          .doc(widget.franchiseID)
-                          .collection('list')
-                          .add({
-                        'productID': productID,
-                        ...productData,
-                      });
-                    } else {
-                      await _firestore
-                          .collection('product')
-                          .doc(widget.franchiseID)
-                          .collection('list')
-                          .doc(productDoc.id)
-                          .update(productData);
-                    }
-                    Navigator.pop(context);
-                    setState(() {}); // Refresh the UI
-                  },
-                  child: Text(
-                      productDoc == null ? 'Add Product' : 'Update Product'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTextField(
-      String label, TextEditingController controller, FlutterFlowTheme theme,
-      {bool isNumeric = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: theme.labelLarge,
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.alternate, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.primary, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
+              const SizedBox(height: 16),
+              FloatingActionButton(
+                heroTag: 'addCategory',
+                onPressed: () {
+                  setState(() {
+                    _isExpanded = false;
+                  });
+                  _animationController.reverse();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const CategoryPage(),
+                    ),
+                  );
+                },
+                backgroundColor: theme.primaryBackground,
+                child: Icon(Icons.category, color: theme.primaryText),
+              ),
+            ],
           ),
         ),
-        style: theme.bodyLarge,
       ),
     );
-  }
-
-  Future<String> _getNextProductID() async {
-    final snapshot = await _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('list')
-        .orderBy('productID', descending: true)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      final lastID = int.parse(snapshot.docs.first['productID']);
-      return (lastID + 1).toString();
-    }
-    return '1';
-  }
-
-  Future<void> _deleteProduct(BuildContext context, String id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this product?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      if (widget.franchiseID.isNotEmpty) {
-        await _firestore
-            .collection('product')
-            .doc(widget.franchiseID)
-            .collection('list')
-            .doc(id)
-            .delete();
-        setState(() {}); // Refresh the UI after deletion
-      }
-    }
   }
 }

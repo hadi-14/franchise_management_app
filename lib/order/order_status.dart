@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:franchise_management_app/order/order_details.dart';
 import 'package:provider/provider.dart';
 import '../Common/drawer.dart';
 import '../Common/flutter_flow_theme.dart';
@@ -27,11 +28,18 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchOrders(String franchiseID) async {
+    final userState = Provider.of<UserState>(context);
     Query query = _firestore
         .collection('sales')
         .doc(franchiseID)
         .collection('list')
-        .where('State', isNotEqualTo: 'Completed');
+        .where('State', whereNotIn: ['Completed', 'Cancelled']);
+
+    // Apply search filter
+    if (userState.role == 'franchisee') {
+      query = query.where('StoreID',
+          isEqualTo: int.parse(userState.franchiseInternalID));
+    }
 
     // Apply search filter
     if (_searchController.text.isNotEmpty &&
@@ -154,6 +162,318 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     );
   }
 
+  Future<Map<String, dynamic>> _fetchFranchiseAddress(
+      String franchiseID) async {
+    final snapshot = await _firestore
+        .collection('user')
+        .where('franchiseInternalID', isEqualTo: franchiseID)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      return snapshot.docs.first.data()['Address']!;
+    } else {
+      return {};
+    }
+  }
+
+  Widget _buildOwnerOrStaffCard(
+      BuildContext context, Map<String, dynamic> order) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchFranchiseAddress(
+          order['StoreID']), // Fetch the address based on the StoreID
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            width: screenWidth * 0.9,
+            padding: EdgeInsets.all(screenWidth * 0.03),
+            height: 100,
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text('Error fetching address.');
+        }
+
+        final address = snapshot.data!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order Id : ${order['OrderID']}',
+              style: const TextStyle(
+                color: Color(0xFF353934),
+                fontSize: 16,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Container(
+              width: screenWidth * 0.9,
+              padding: EdgeInsets.all(screenWidth * 0.03),
+              decoration: ShapeDecoration(
+                color: const Color(0xFFFAFAFA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                shadows: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 15,
+                    offset: Offset(0, 10),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children:
+                        List.generate(order['productImages'].length, (index) {
+                      return _buildImagePlaceholder(
+                          order['productImages'][index]);
+                    }),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Franchise Code: ${order['StoreID']}",
+                    style: const TextStyle(
+                      color: Color(0xFF353934),
+                      fontSize: 14,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'State',
+                        style: TextStyle(
+                          color: Color(0xFF8E918D),
+                          fontSize: 12,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      _buildStatusChip(
+                        order['State'],
+                        _getStatusColor(order['State']),
+                        _getStatusTextColor(order['State']),
+                        _getStatusBorderColor(order['State']),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Subtotal',
+                        style: TextStyle(
+                          color: Color(0xFF8E918D),
+                          fontSize: 12,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '\$${order['NetTotal']}',
+                        style: const TextStyle(
+                          color: Color(0xFF353934),
+                          fontSize: 12,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}',
+                    style: const TextStyle(
+                      color: Color(0xFF8E918D),
+                      fontSize: 12,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => OrderDetails(
+                            orderId: order['OrderID'].toString(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          'More Details',
+                          style: TextStyle(
+                            color: Color(0xFFD09A6C),
+                            fontSize: 14,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_right,
+                          color: Color(0xFFD09A6C),
+                        )
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order) {
+    final userState = Provider.of<UserState>(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Text(
+          'Order Id : ${order['OrderID']}',
+          style: const TextStyle(
+            color: Color(0xFF353934),
+            fontSize: 18,
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.only(right: 9, bottom: 6, left: 9),
+          decoration: ShapeDecoration(
+            color: const Color(0xFFFAFAFA),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 15,
+                offset: Offset(0, 10),
+                spreadRadius: 0,
+              )
+            ],
+          ),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 60,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children:
+                      List.generate(order['productImages'].length, (index) {
+                    return _buildImagePlaceholder(
+                        order['productImages'][index]);
+                  }),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatusChip(
+                    order['State'],
+                    _getStatusColor(order['State']),
+                    _getStatusTextColor(order['State']),
+                    _getStatusBorderColor(order['State']),
+                  ),
+                  if (order['State'] == 'Shipped')
+                    TextButton(
+                      onPressed: () => _showConfirmationDialog(context,
+                          userState.franchiseID, order['OrderID'].toString()),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                              width: 29,
+                              child: Image.asset('assets/Icons/mark.png')),
+                          const Text(
+                            'Mark as Complete',
+                            style: TextStyle(
+                              color: Color(0xFFD09A6C),
+                              fontSize: 10,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Franchise ID: ${userState.franchiseInternalID}',
+                      style: const TextStyle(
+                        color: Color(0xFF353934),
+                        fontSize: 16,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${userState.address['street']}, ${userState.address['city']}, ${userState.address['state']}, ${userState.address['country']}, ${userState.address['zip']}',
+                      style: const TextStyle(
+                        color: Color(0xFF8E918D),
+                        fontSize: 14,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '\$${order['NetTotal']}',
+                    style: const TextStyle(
+                      color: Color(0xFFD09A6C),
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
@@ -241,6 +561,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
+                  print(snapshot.error);
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 final data = snapshot.data ?? [];
@@ -252,143 +573,13 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   itemCount: data.length,
                   itemBuilder: (context, index) {
                     final order = data[index];
-                    final List<String> productImages = order['productImages'];
-
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          Text(
-                            'Order Id : ${order['OrderID']}',
-                            style: const TextStyle(
-                              color: Color(0xFF353934),
-                              fontSize: 18,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.only(
-                                right: 9, bottom: 6, left: 9),
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFFAFAFA),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                              shadows: const [
-                                BoxShadow(
-                                  color: Color(0x0A000000),
-                                  blurRadius: 15,
-                                  offset: Offset(0, 10),
-                                  spreadRadius: 0,
-                                )
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                SizedBox(
-                                  height: 60,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: productImages.length,
-                                    itemBuilder: (context, imageIndex) {
-                                      return _buildImagePlaceholder(
-                                          productImages[imageIndex]);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _buildStatusChip(
-                                      order['State'],
-                                      _getStatusColor(order['State']),
-                                      _getStatusTextColor(order['State']),
-                                      _getStatusBorderColor(order['State']),
-                                    ),
-                                    if (order['State'] == 'Shipped')
-                                      TextButton(
-                                        onPressed: () =>
-                                            _showConfirmationDialog(
-                                                context,
-                                                userState.franchiseID,
-                                                order['OrderID'].toString()),
-                                        child: Row(
-                                          children: [
-                                            SizedBox(
-                                                width: 29,
-                                                child: Image.asset(
-                                                    'assets/Icons/mark.png')),
-                                            const Text(
-                                              'Mark as Complete',
-                                              style: TextStyle(
-                                                color: Color(0xFFD09A6C),
-                                                fontSize: 10,
-                                                fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'Franchise ID: ${userState.franchiseInternalID}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF353934),
-                                          fontSize: 16,
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        '${userState.address['street']}, ${userState.address['city']}, ${userState.address['state']}, ${userState.address['country']}, ${userState.address['zip']}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF8E918D),
-                                          fontSize: 14,
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Text(
-                                      '\$${order['NetTotal']}',
-                                      style: const TextStyle(
-                                        color: Color(0xFFD09A6C),
-                                        fontSize: 16,
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: userState.role == 'owner' ||
+                              userState.role == 'staff'
+                          ? _buildOwnerOrStaffCard(context, order)
+                          : _buildOrderCard(context,
+                              order), // Fallback to a generic order card for non-owner/staff roles
                     );
                   },
                 );

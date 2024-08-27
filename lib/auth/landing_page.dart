@@ -40,22 +40,22 @@ class LandingPage extends StatelessWidget {
             Positioned(
               top: screenHeight * 0.9, // 90% of the screen height
               left: screenWidth * 0.05, // 5% from the left
-              child: Container(
-                width: screenWidth * 0.91, // 91% of the screen width
-                height: screenHeight * 0.07, // 7% of the screen height
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: theme.primary,
-                ),
-                child: Center(
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginPage()),
-                      );
-                    },
+              child: InkWell(
+                onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const LoginPage()),
+                        );
+                      },
+                child: Container(
+                  width: screenWidth * 0.91, // 91% of the screen width
+                  height: screenHeight * 0.07, // 7% of the screen height
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: theme.primary,
+                  ),
+                  child: Center(
                     child: Text(
                       'Get Started',
                       textAlign: TextAlign.center,

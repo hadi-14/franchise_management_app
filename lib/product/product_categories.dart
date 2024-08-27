@@ -1,223 +1,335 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart'; // For kIsWeb
-import 'dart:io' show Platform;
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
+import '../Common/user_state.dart';
 
-class CategoriesPage extends StatefulWidget {
-  final String franchiseID;
-
-  const CategoriesPage({super.key, required this.franchiseID});
+class CategoryPage extends StatefulWidget {
+  const CategoryPage({super.key});
 
   @override
-  _CategoriesPageState createState() => _CategoriesPageState();
+  _CategoryPageState createState() => _CategoryPageState();
 }
 
-class _CategoriesPageState extends State<CategoriesPage> {
-  final TextEditingController _searchController = TextEditingController();
+class _CategoryPageState extends State<CategoryPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  final TextEditingController _nameController = TextEditingController();
-  final Set<String> _selectedCategories = <String>{};
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_filterCategories);
-  }
-
-  void _filterCategories() {
-    setState(() {}); // Trigger the UI to update with the search filter
-  }
-
-  Future<List<DocumentSnapshot>> _fetchCategories() async {
-    Query query = _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('category');
-
-    if (_searchController.text.isNotEmpty) {
-      query = query
-          .where('name', isGreaterThanOrEqualTo: _searchController.text)
-          .where('name', isLessThanOrEqualTo: '${_searchController.text}\uf8ff');
-    }
-
-    final snapshot = await query.get();
-    return snapshot.docs;
-  }
-
-  Future<void> _addCategory() async {
-    if (widget.franchiseID.isEmpty) return;
-
-    await _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('category')
-        .add({
-      'name': _nameController.text,
-    });
-    setState(() {}); // Refresh the UI after adding the category
-  }
-
-  Future<void> _updateCategory(String id) async {
-    if (widget.franchiseID.isEmpty || id.isEmpty) return;
-
-    await _firestore
-        .collection('product')
-        .doc(widget.franchiseID)
-        .collection('category')
-        .doc(id)
-        .update({
-      'name': _nameController.text,
-    });
-    setState(() {}); // Refresh the UI after updating the category
-  }
-
-  Future<void> _deleteCategories() async {
-    if (widget.franchiseID.isEmpty || _selectedCategories.isEmpty) return;
-
-    final batch = _firestore.batch();
-    for (final categoryId in _selectedCategories) {
-      batch.delete(_firestore
-          .collection('product')
-          .doc(widget.franchiseID)
-          .collection('category')
-          .doc(categoryId));
-    }
-    await batch.commit();
-    setState(() {
-      _selectedCategories.clear();
-    });
-    setState(() {}); // Refresh the UI after deletion
-  }
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
 
-    // Check if the current platform is Android, iOS, or Web
-    final bool isMobile = Platform.isAndroid || Platform.isIOS || kIsWeb;
-
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Categories',
-                  style: theme.headlineMedium,
-                ),
-                ElevatedButton.icon(
-                  onPressed: _showAddCategoryModal,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Category'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.primary,
-                    foregroundColor: theme.primaryBackground,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_selectedCategories.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: _deleteCategories,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      child: const Text('Delete Selected'),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(
-              child: FutureBuilder<List<DocumentSnapshot>>(
-                future: _fetchCategories(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  }
-                  final data = snapshot.data ?? [];
-                  if (data.isEmpty) {
-                    return const Center(child: Text('No categories found.'));
-                  }
+      backgroundColor: const Color(0xFFFAFAFA),
+      appBar: AppBar(
+        title: const Text('Categories'),
+        backgroundColor: theme.primary,
+      ),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          _buildCategoryHeader(context),
+          _buildCategoryList(),
+        ],
+      ),
+    );
+  }
 
-                  return isMobile
-                      ? _buildCardLayout(data, theme)
-                      : _buildTableLayout(data, theme);
-                },
-              ),
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x26686868),
+              blurRadius: 8,
+              offset: Offset(0, 1),
+              spreadRadius: 3,
             ),
           ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: const InputDecoration(
+            hintText: 'Search...',
+            border: InputBorder.none,
+            icon: Icon(Icons.search, color: Color(0xFF552E05)),
+          ),
+          onChanged: (value) {
+            setState(() {}); // Trigger rebuild to filter the list
+          },
         ),
       ),
     );
   }
 
-  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
-    return ListView.builder(
-      itemCount: data.length,
-      itemBuilder: (context, index) {
-        final category = data[index].data() as Map<String, dynamic>;
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
+  Widget _buildCategoryHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Categories',
+            style: TextStyle(
+              color: Color(0xFF353934),
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Padding(
+          GestureDetector(
+            onTap: () {
+              _showAddOrEditCategoryDialog(context);
+            },
+            child: const Text(
+              '+ Add Category',
+              style: TextStyle(
+                color: Color(0xFFD09A6C),
+                fontSize: 16,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryList() {
+    final userState = Provider.of<UserState>(context);
+
+    return Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('product')
+            .doc(userState.franchiseID)
+            .collection('category')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error fetching categories'));
+          }
+
+          final categories = snapshot.data!.docs;
+          final filteredCategories = categories.where((doc) {
+            final categoryName = doc['name'].toString().toLowerCase();
+            final searchText = _searchController.text.toLowerCase();
+            return categoryName.contains(searchText);
+          }).toList();
+
+          if (filteredCategories.isEmpty) {
+            return const Center(child: Text('No categories found'));
+          }
+
+          return ListView.builder(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Category Name: ${category['name']}',
-                  style: theme.titleLarge,
+            itemCount: filteredCategories.length,
+            itemBuilder: (context, index) {
+              final category = filteredCategories[index];
+              return _buildCategoryItem(category);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(QueryDocumentSnapshot category) {
+    final theme = FlutterFlowTheme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 15,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Category Name: ${category['name']}',
+            style: const TextStyle(
+              color: Color(0xFF353934),
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Color(0xFFD09A6C)),
+                onPressed: () {
+                  _showAddOrEditCategoryDialog(
+                    context,
+                    categoryId: category.id,
+                    existingName: category['name'],
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Color(0xFFD09A6C)),
+                onPressed: () {
+                  _deleteCategory(category.id);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddOrEditCategoryDialog(BuildContext context,
+      {String? categoryId, String? existingName}) async {
+    final theme = FlutterFlowTheme.of(context);
+    final TextEditingController categoryNameController =
+        TextEditingController(text: existingName);
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Container(
+            width: 300,
+            height: 245,
+            decoration: BoxDecoration(
+              color: const Color(0xFF876A51),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 15,
+                  offset: Offset(0, 10),
+                  spreadRadius: 0,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _selectedCategories.contains(data[index].id),
-                      onChanged: (selected) {
-                        setState(() {
-                          if (selected!) {
-                            _selectedCategories.add(data[index].id);
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 261,
+                  top: 17,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image:
+                              NetworkImage("https://via.placeholder.com/20x20"),
+                          fit: BoxFit.fill,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 26,
+                  top: 41,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Category Name',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 247,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAFAFA),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x1E000000),
+                              blurRadius: 15,
+                              offset: Offset(0, 10),
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: TextField(
+                            controller: categoryNameController,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Write the category name',
+                              hintStyle: TextStyle(
+                                color: Color(0xFF8E918D),
+                                fontSize: 12,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      GestureDetector(
+                        onTap: () {
+                          if (categoryId == null) {
+                            _addCategory(categoryNameController.text);
                           } else {
-                            _selectedCategories.remove(data[index].id);
+                            _editCategory(categoryId, categoryNameController.text);
                           }
-                        });
-                      },
-                    ),
-                    const Text('Select'),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _showEditCategoryModal(
-                          data[index].id, category['name']),
-                    ),
-                  ],
+                          Navigator.of(context).pop();
+                        },
+                        child: Container(
+                          width: 175,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: theme.primary,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Save',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -227,141 +339,36 @@ class _CategoriesPageState extends State<CategoriesPage> {
     );
   }
 
-  Widget _buildTableLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Select')),
-          DataColumn(label: Text('Name')),
-          DataColumn(label: Text('Actions')),
-        ],
-        rows: data.map((categoryDoc) {
-          final category = categoryDoc.data() as Map<String, dynamic>;
-
-          return DataRow(
-            selected: _selectedCategories.contains(categoryDoc.id),
-            onSelectChanged: (selected) {
-              setState(() {
-                if (selected!) {
-                  _selectedCategories.add(categoryDoc.id);
-                } else {
-                  _selectedCategories.remove(categoryDoc.id);
-                }
-              });
-            },
-            cells: [
-              DataCell(
-                Checkbox(
-                  value: _selectedCategories.contains(categoryDoc.id),
-                  onChanged: (selected) {
-                    setState(() {
-                      if (selected!) {
-                        _selectedCategories.add(categoryDoc.id);
-                      } else {
-                        _selectedCategories.remove(categoryDoc.id);
-                      }
-                    });
-                  },
-                ),
-              ),
-              DataCell(Text(category['name'])),
-              DataCell(
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _showEditCategoryModal(
-                          categoryDoc.id, category['name']),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
+  Future<void> _addCategory(String categoryName) async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    if (categoryName.isNotEmpty) {
+      await _firestore
+          .collection('product')
+          .doc(userState.franchiseID)
+          .collection('category')
+          .add({'name': categoryName});
+    }
   }
 
-  Widget _buildTextField(
-      String label, TextEditingController controller, FlutterFlowTheme theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: theme.labelLarge,
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.alternate, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: theme.primary, width: 2.0),
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-        ),
-        style: theme.bodyLarge,
-      ),
-    );
+  Future<void> _editCategory(String categoryId, String categoryName) async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    if (categoryName.isNotEmpty) {
+      await _firestore
+          .collection('product')
+          .doc(userState.franchiseID)
+          .collection('category')
+          .doc(categoryId)
+          .update({'name': categoryName});
+    }
   }
 
-  void _showAddCategoryModal() {
-    _nameController.clear();
-    final theme = FlutterFlowTheme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField('Name', _nameController, theme),
-              ElevatedButton(
-                onPressed: () {
-                  _addCategory();
-                  Navigator.pop(context);
-                },
-                child: const Text('Add Category'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showEditCategoryModal(String id, String currentName) {
-    _nameController.text = currentName;
-    final theme = FlutterFlowTheme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField('Name', _nameController, theme),
-              ElevatedButton(
-                onPressed: () {
-                  _updateCategory(id);
-                  Navigator.pop(context);
-                },
-                child: const Text('Update Category'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _deleteCategory(String categoryId) async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    await _firestore
+        .collection('product')
+        .doc(userState.franchiseID)
+        .collection('category')
+        .doc(categoryId)
+        .delete();
   }
 }

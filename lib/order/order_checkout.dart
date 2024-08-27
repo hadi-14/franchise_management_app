@@ -30,119 +30,148 @@ class CheckoutCart extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height - 116,
-            decoration: const BoxDecoration(color: Color(0xFFFAFAFA)),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Order Summary',
-                        style: TextStyle(
-                          color: Color(0xFF353934),
-                          fontSize: 16,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      InkWell(
-                        child: const Text(
-                          '+ Add Items',
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(color: Color(0xFFFAFAFA)),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.of(context).size.width * 0.05,
+                      vertical: 10.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Order Summary',
                           style: TextStyle(
-                            color: Color(0xFFD09A6C),
+                            color: Color(0xFF353934),
                             fontSize: 16,
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        onTap: () {
-                          tabController.animateTo(0);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.95,
-                  height: MediaQuery.of(context).size.height * 0.56,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: cartItems.map((product) {
-                        return CartItem(
-                          product: product,
-                          onRemove: () =>
-                              appState.removeFromCart(product['productID']),
-                          onAddQuantity: () => appState.updateProductQuantity(
-                              product['productID'], product['quantity'] + 1),
-                          onReduceQuantity: () {
-                            if (product['quantity'] > 1) {
-                              appState.updateProductQuantity(
-                                  product['productID'],
-                                  product['quantity'] - 1);
-                            }
+                        InkWell(
+                          child: const Text(
+                            '+ Add Items',
+                            style: TextStyle(
+                              color: Color(0xFFD09A6C),
+                              fontSize: 16,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: () {
+                            tabController.animateTo(0);
                           },
-                        );
-                      }).toList(),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  child: Column(
-                    children: [
-                      const Divider(height: 2.0),
-                      _buildSummaryRow('Subtotal',
-                          '\$${(_calculateSubtotal(cartItems)).toStringAsFixed(2)}'),
-                      _buildSummaryRow('Service Charges (1%)',
-                          '+\$${(_calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}'),
-                      _buildSummaryRow(
-                        'Total Payment',
-                        '\$${(_calculateSubtotal(cartItems) + _calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}',
-                        isTotal: true,
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.of(context).size.width * 0.025,
                       ),
-                      InkWell(
-                        onTap: () async {
-                          await _processOrder(
-                              context, userState, cartItems, appState);
-                          // Handle order processing and navigation after saving
-                        },
-                        child: Container(
-                          width: MediaQuery.of(context).size.width * 0.8,
-                          height: 56,
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFFD09A6C),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Order Now',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: cartItems.map((product) {
+                            return CartItem(
+                              product: product,
+                              onRemove: () =>
+                                  appState.removeFromCart(product['productID']),
+                              onAddQuantity: () =>
+                                  appState.updateProductQuantity(
+                                      product['productID'],
+                                      product['quantity'] + 1),
+                              onReduceQuantity: () {
+                                if (product['quantity'] > 1) {
+                                  appState.updateProductQuantity(
+                                      product['productID'],
+                                      product['quantity'] - 1);
+                                }
+                              },
+                            );
+                          }).toList(),
                         ),
                       ),
-                      const SizedBox(
-                        height: 10,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          _buildBottomSection(context, cartItems, userState, appState),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSection(
+      BuildContext context,
+      List<Map<String, dynamic>> cartItems,
+      UserState userState,
+      AppState appState) {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      padding: EdgeInsets.fromLTRB(MediaQuery.of(context).size.width * 0.05,
+          10.0, MediaQuery.of(context).size.width * 0.05, 75.0),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F5F5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            offset: Offset(0, -2),
+            blurRadius: 10.0,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildSummaryRow(
+            'Subtotal',
+            '\$${(_calculateSubtotal(cartItems)).toStringAsFixed(2)}',
+          ),
+          _buildSummaryRow(
+            'Service Charges (1%)',
+            '+\$${(_calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}',
+          ),
+          const Divider(height: 2.0),
+          _buildSummaryRow(
+            'Total Payment',
+            '\$${(_calculateSubtotal(cartItems) + _calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}',
+            isTotal: true,
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () async {
+              await _processOrder(context, userState, cartItems, appState);
+            },
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: 56,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFD09A6C),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  'Order Now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -297,10 +326,10 @@ class CartItem extends StatelessWidget {
             left: 138,
             top: 0,
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.5,
+              width: MediaQuery.of(context).size.width * 0.6,
               height: 138,
               decoration: const ShapeDecoration(
-                color: Color(0xFFFAFAFA),
+                color: Color.fromARGB(255, 255, 255, 255),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(8),
@@ -343,7 +372,7 @@ class CartItem extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    right: -10,
+                    right: 0,
                     top: 10,
                     child: IconButton(
                       icon: Image.asset(
@@ -355,7 +384,7 @@ class CartItem extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    left: 98,
+                    right: 15,
                     top: 106,
                     child: SizedBox(
                       width: 88,
@@ -375,11 +404,10 @@ class CartItem extends StatelessWidget {
                               shape: BoxShape.rectangle,
                             ),
                             child: IconButton(
-                              padding: const EdgeInsets.all(
-                                  0), // Ensures the icon fills the container
+                              padding: const EdgeInsets.all(0),
                               icon: const Icon(Icons.remove, size: 14),
                               color: const Color(0xFF552E05),
-                              onPressed: onAddQuantity,
+                              onPressed: onReduceQuantity,
                             ),
                           ),
                           Text(
@@ -403,8 +431,7 @@ class CartItem extends StatelessWidget {
                               shape: BoxShape.rectangle,
                             ),
                             child: IconButton(
-                              padding: const EdgeInsets.all(
-                                  0), // Ensures the icon fills the container
+                              padding: const EdgeInsets.all(0),
                               icon: const Icon(Icons.add, size: 14),
                               color: Colors.white,
                               onPressed: onAddQuantity,
