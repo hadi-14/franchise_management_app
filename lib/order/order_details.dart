@@ -26,7 +26,8 @@ class OrderDetails extends StatelessWidget {
     }
   }
 
-  Future<String> _fetchProductName(UserState userState, String productId) async {
+  Future<String> _fetchProductName(
+      UserState userState, String productId) async {
     final productSnapshot = await FirebaseFirestore.instance
         .collection('product')
         .doc(userState.franchiseID)
@@ -41,8 +42,8 @@ class OrderDetails extends StatelessWidget {
     }
   }
 
-  Future<void> _updateOrderState(
-      Map<String, dynamic> orderData, UserState userState, String newState) async {
+  Future<void> _updateOrderState(Map<String, dynamic> orderData,
+      UserState userState, String newState, BuildContext context) async {
     final orderSnapshot = await FirebaseFirestore.instance
         .collection('sales')
         .doc(userState.franchiseID)
@@ -57,6 +58,9 @@ class OrderDetails extends StatelessWidget {
           .collection('list')
           .doc(orderSnapshot.docs.first.id)
           .update({'State': newState});
+      
+      // Reload the previous page
+      Navigator.pop(context, true);
     } else {
       throw Exception('Order not found');
     }
@@ -103,7 +107,8 @@ class OrderDetails extends StatelessWidget {
                       const SizedBox(height: 15),
                       _buildProductList(userState, productList, screenWidth),
                       const SizedBox(height: 15),
-                      _buildDetailRow('Total Amount', '\$$totalAmount', screenWidth),
+                      _buildDetailRow(
+                          'Total Amount', '\$$totalAmount', screenWidth),
                       const SizedBox(height: 15),
                       _buildDetailRow('Store', storeName, screenWidth),
                     ],
@@ -112,7 +117,7 @@ class OrderDetails extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.all(18.0),
-                child: _buildBottomButtons(orderData, userState, state),
+                child: _buildBottomButtons(orderData, userState, state, context),
               ),
             ],
           );
@@ -153,7 +158,8 @@ class OrderDetails extends StatelessWidget {
     );
   }
 
-  Widget _buildProductList(UserState userState, List<dynamic> productList, double screenWidth) {
+  Widget _buildProductList(
+      UserState userState, List<dynamic> productList, double screenWidth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -174,10 +180,12 @@ class OrderDetails extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E5EA), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFFE5E5EA), width: 1),
                     color: const Color(0xFFFAFAFA),
                   ),
                   child: const Center(child: CircularProgressIndicator()),
@@ -185,22 +193,27 @@ class OrderDetails extends StatelessWidget {
               } else if (snapshot.hasError) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E5EA), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFFE5E5EA), width: 1),
                     color: const Color(0xFFFAFAFA),
                   ),
-                  child: const Center(child: Text('Error loading product name')),
+                  child:
+                      const Center(child: Text('Error loading product name')),
                 );
               } else {
                 final productName = snapshot.data!;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE5E5EA), width: 1),
+                    border:
+                        Border.all(color: const Color(0xFFE5E5EA), width: 1),
                     color: const Color(0xFFFAFAFA),
                   ),
                   child: Column(
@@ -265,15 +278,14 @@ class OrderDetails extends StatelessWidget {
   }
 
   Widget _buildBottomButtons(
-      Map<String, dynamic> orderData, UserState userState, String state) {
+      Map<String, dynamic> orderData, UserState userState, String state, BuildContext context) {
     return Row(
       children: [
         if (state == 'Pending') ...[
           Expanded(
             child: OutlinedButton(
               onPressed: () {
-                // Handle order cancellation
-                _updateOrderState(orderData, userState, 'Cancelled');
+                _updateOrderState(orderData, userState, 'Cancelled', context);
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFFE2E4E9)),
@@ -297,7 +309,7 @@ class OrderDetails extends StatelessWidget {
           Expanded(
             child: ElevatedButton(
               onPressed: () {
-                _updateOrderState(orderData, userState, 'Approved'); // Approve and update order state
+                _updateOrderState(orderData, userState, 'Approved', context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD09A6C),
@@ -321,9 +333,8 @@ class OrderDetails extends StatelessWidget {
           Expanded(
             child: ElevatedButton(
               onPressed: () {
-                // Handle transitioning to the next state
                 final nextState = _getNextState(state);
-                _updateOrderState(orderData, userState, nextState);
+                _updateOrderState(orderData, userState, nextState, context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD09A6C),

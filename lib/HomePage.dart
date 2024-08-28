@@ -69,78 +69,81 @@ class _HomePageState extends State<HomePage>
 
     const Color unselectedColor = Colors.grey;
 
-    return SafeArea(
-      child: Scaffold(
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: isOwnerOrStaff
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 30.0),
-                child: FloatingActionButton(
-                  onPressed: () {
-                    // Navigate to the scanner page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const BarcodeScannerWithZoom()),
-                    );
-                  },
-                  backgroundColor: theme.primary,
-                  shape: const CircleBorder(),
-                  child: Icon(
-                    Icons.qr_code_scanner, // Use scan icon
-                    color: theme.tertiary,
-                    size: 28, // Adjust the size as needed
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: SafeArea(
+        child: Scaffold(
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: isOwnerOrStaff
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 30.0),
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      // Navigate to the scanner page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const BarcodeScannerWithZoom()),
+                      );
+                    },
+                    backgroundColor: theme.primary,
+                    shape: const CircleBorder(),
+                    child: Icon(
+                      Icons.qr_code_scanner, // Use scan icon
+                      color: theme.tertiary,
+                      size: 28, // Adjust the size as needed
+                    ),
                   ),
+                )
+              : Container(),
+          body: BottomBar(
+            fit: StackFit.expand,
+            icon: (width, height) => Center(
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                onPressed: null,
+                icon: Icon(
+                  Icons.arrow_upward_rounded,
+                  color: unselectedColor,
+                  size: width,
                 ),
-              )
-            : Container(),
-        body: BottomBar(
-          fit: StackFit.expand,
-          icon: (width, height) => Center(
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              onPressed: null,
-              icon: Icon(
-                Icons.arrow_upward_rounded,
-                color: unselectedColor,
-                size: width,
               ),
             ),
-          ),
-          borderRadius: BorderRadius.circular(500),
-          duration: const Duration(seconds: 1),
-          curve: Curves.decelerate,
-          showIcon: true,
-          width: MediaQuery.of(context).size.width * 0.8,
-          barColor: theme.secondary,
-          start: 2,
-          end: 0,
-          offset: 10,
-          barAlignment: Alignment.bottomCenter,
-          iconHeight: 35,
-          iconWidth: 35,
-          reverse: false,
-          hideOnScroll: true,
-          scrollOpposite: false,
-          onBottomBarHidden: () {},
-          onBottomBarShown: () {},
-          body: (context, controller) => TabBarView(
-            controller: tabController,
-            dragStartBehavior: DragStartBehavior.down,
-            physics: const BouncingScrollPhysics(),
-            children: pages,
-          ),
-          child: TabBar(
-            controller: tabController,
-            indicatorPadding: const EdgeInsets.fromLTRB(6, 0, 6, 0),
-            indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(
-                color: theme.primary,
-                width: 4,
-              ),
-              insets: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            borderRadius: BorderRadius.circular(500),
+            duration: const Duration(seconds: 1),
+            curve: Curves.decelerate,
+            showIcon: true,
+            width: MediaQuery.of(context).size.width * 0.8,
+            barColor: theme.secondary,
+            start: 2,
+            end: 0,
+            offset: 10,
+            barAlignment: Alignment.bottomCenter,
+            iconHeight: 35,
+            iconWidth: 35,
+            reverse: false,
+            hideOnScroll: true,
+            scrollOpposite: false,
+            onBottomBarHidden: () {},
+            onBottomBarShown: () {},
+            body: (context, controller) => TabBarView(
+              controller: tabController,
+              dragStartBehavior: DragStartBehavior.down,
+              physics: const BouncingScrollPhysics(),
+              children: pages,
             ),
-            tabs: tabs,
+            child: TabBar(
+              controller: tabController,
+              indicatorPadding: const EdgeInsets.fromLTRB(6, 0, 6, 0),
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(
+                  color: theme.primary,
+                  width: 4,
+                ),
+                insets: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              ),
+              tabs: tabs,
+            ),
           ),
         ),
       ),

@@ -8,7 +8,9 @@ import '../Common/user_state.dart';
 import 'dart:io';
 
 class AddProducts extends StatefulWidget {
-  const AddProducts({super.key});
+  final Map<String, dynamic>? productData; // Optional product data for editing
+
+  const AddProducts({super.key, this.productData});
 
   @override
   _AddProductsState createState() => _AddProductsState();
@@ -23,20 +25,36 @@ class _AddProductsState extends State<AddProducts> {
   final _totalAmountController = TextEditingController();
   final _taxController = TextEditingController();
   final _quantityController = TextEditingController();
-  final _itemsInBoxController = TextEditingController(); // New controller for Items in Box
+  final _itemsInBoxController = TextEditingController(); 
 
   bool isPieceSelected = false;
   bool isBoxSelected = false;
   File? _selectedImage;
   String? _imageUrl;
+  String? selectedCategory;
+  String? productId; // Hold the product ID for editing
 
   List<DropdownMenuItem<String>> _categoryDropdownItems = [];
-  String? selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _fetchCategories();
+
+    // If productData is provided, populate the fields
+    if (widget.productData != null) {
+      _productNameController.text = widget.productData!['productName'] ?? '';
+      _productDescController.text = widget.productData!['desc'] ?? '';
+      _skuController.text = widget.productData!['upcCode'] ?? '';
+      _totalAmountController.text = widget.productData!['price'].toString();
+      _quantityController.text = widget.productData!['quantity'].toString();
+      _itemsInBoxController.text = widget.productData!['itemsInBox'].toString();
+      isPieceSelected = widget.productData!['type']['piece'] ?? false;
+      isBoxSelected = widget.productData!['type']['box'] ?? false;
+      selectedCategory = widget.productData!['categoryID'];
+      _imageUrl = widget.productData!['image'];
+      productId = widget.productData!['ID']; // Set the product ID for updating
+    }
   }
 
   Future<void> _fetchCategories() async {
@@ -81,48 +99,80 @@ class _AddProductsState extends State<AddProducts> {
     }
   }
 
-  Future<void> _addProduct() async {
+  Future<void> _saveProduct() async {
+    // Ensure all required fields are filled out
+    if (_productNameController.text.isEmpty ||
+        _productDescController.text.isEmpty ||
+        _skuController.text.isEmpty ||
+        _totalAmountController.text.isEmpty ||
+        selectedCategory == null ||
+        (_selectedImage == null && _imageUrl == null)) {
+
+      // Show a snackbar to notify the user that all fields must be filled
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill out all required fields and add an image.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return; // Exit the method if validation fails
+    }
+
+    // Continue with the product saving process
     final userState = Provider.of<UserState>(context, listen: false);
     final franchiseID = userState.franchiseID;
 
-    if (selectedCategory != null &&
-        _productNameController.text.isNotEmpty &&
-        _selectedImage != null) {
-      await _uploadImage();
+    await _uploadImage();
 
-      if (_imageUrl != null) {
-        final productData = {
-          'categoryID': selectedCategory,
-          'desc': _productDescController.text,
-          'image': _imageUrl,
-          'price': double.tryParse(_totalAmountController.text) ?? 0.0,
-          'upcCode': _skuController.text,
-          'productName': _productNameController.text,
-          'quantity': int.tryParse(_quantityController.text) ?? 0,
-          'itemsInBox': int.tryParse(_itemsInBoxController.text) ?? 0, // Adding Items in Box
-          'type': {
-            'piece': isPieceSelected,
-            'box': isBoxSelected,
-          }
-        };
+    if (_imageUrl != null) {
+      final productData = {
+        'categoryID': selectedCategory,
+        'desc': _productDescController.text,
+        'image': _imageUrl,
+        'price': double.tryParse(_totalAmountController.text) ?? 0.0,
+        'upcCode': _skuController.text,
+        'productName': _productNameController.text,
+        'quantity': int.tryParse(_quantityController.text) ?? 0,
+        'itemsInBox': int.tryParse(_itemsInBoxController.text) ?? 0, 
+        'type': {
+          'piece': isPieceSelected,
+          'box': isBoxSelected,
+        }
+      };
 
+      if (productId != null) {
+        // Update the existing product
+        await _firestore
+            .collection('product')
+            .doc(franchiseID)
+            .collection('list')
+            .doc(productId)
+            .update(productData);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product has been updated'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      } else {
+        // Add a new product
         await _firestore
             .collection('product')
             .doc(franchiseID)
             .collection('list')
             .add(productData);
 
-        // Show a snackbar indicating the product has been added
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Product has been added'),
             duration: Duration(seconds: 1),
           ),
         );
-
-        // Reset the form after submission
-        _resetForm();
       }
+
+      // Reset the form after submission
+      _resetForm();
     }
   }
 
@@ -133,13 +183,14 @@ class _AddProductsState extends State<AddProducts> {
     _totalAmountController.clear();
     _taxController.clear();
     _quantityController.clear();
-    _itemsInBoxController.clear(); // Clear Items in Box controller
+    _itemsInBoxController.clear();
     setState(() {
       isPieceSelected = false;
       isBoxSelected = false;
       selectedCategory = null;
       _selectedImage = null;
       _imageUrl = null;
+      productId = null;
     });
   }
 
@@ -152,7 +203,7 @@ class _AddProductsState extends State<AddProducts> {
       backgroundColor: theme.primaryBackground,
       appBar: AppBar(
         title: Text(
-          'Add Product',
+          widget.productData != null ? 'Edit Product' : 'Add Product',
           style: theme.headlineSmall.override(
             color: theme.secondaryText,
             fontFamily: 'Poppins',
@@ -245,15 +296,15 @@ class _AddProductsState extends State<AddProducts> {
                 theme: theme,
                 keyboardType: TextInputType.number,
                 controller: _itemsInBoxController,
-                enabled: isBoxSelected, // Disable when Box is not selected
+                enabled: isBoxSelected, 
               ),
               SizedBox(height: screenHeight * 0.05),
               _buildActionButton(
-                label: 'Add Product',
+                label: widget.productData != null ? 'Update Product' : 'Add Product',
                 color: theme.primary,
                 textColor: theme.tertiary,
                 theme: theme,
-                onPressed: _addProduct,
+                onPressed: _saveProduct,
               ),
             ],
           ),
@@ -263,7 +314,7 @@ class _AddProductsState extends State<AddProducts> {
   }
 
   Widget _buildImagePicker(FlutterFlowTheme theme) {
-    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final screenWidth = MediaQuery.of(context).size.width; 
 
     return Center(
       child: Stack(
@@ -287,10 +338,17 @@ class _AddProductsState extends State<AddProducts> {
                       height: 79,
                       fit: BoxFit.cover,
                     )
-                  : null,
+                  : _imageUrl != null
+                      ? Image.network(
+                          _imageUrl!,
+                          width: 322,
+                          height: 79,
+                          fit: BoxFit.cover,
+                        )
+                      : null,
             ),
           ),
-          if (_selectedImage == null)
+          if (_selectedImage == null && _imageUrl == null)
             Container(
               width: 322,
               height: 79,
@@ -339,6 +397,8 @@ class _AddProductsState extends State<AddProducts> {
       ),
     );
   }
+
+
 
   Widget _buildInputField({
     required String label,

@@ -15,7 +15,7 @@ class CheckoutCart extends StatelessWidget {
     final cartItems = appState.cart;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(toolbarOpacity: 0,
         title: const Center(
           child: Text(
             'Checkout',
@@ -243,7 +243,7 @@ class CheckoutCart extends StatelessWidget {
       'NetTotal': subtotal,
       'ServiceFee': serviceFee,
       'State': 'Pending',
-      'StoreID': franchiseID,
+      'StoreID': userState.franchiseInternalID,
       'Tax': 0, // Assuming tax is 0, adjust as needed
       'TotalAmount': totalAmount,
       'createdBy': createdBy,
@@ -364,7 +364,7 @@ class CartItem extends StatelessWidget {
                         '\$${product['price']}',
                         style: const TextStyle(
                           color: Color(0xFF353934),
-                          fontSize: 18,
+                          fontSize: 14,
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.w500,
                         ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:franchise_management_app/order/order_details.dart';
 import 'package:provider/provider.dart';
 import '../Common/drawer.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
+import 'order_details.dart';
 
 class OrderStatusPage extends StatefulWidget {
   const OrderStatusPage({super.key});
@@ -28,7 +28,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchOrders(String franchiseID) async {
-    final userState = Provider.of<UserState>(context);
+    final userState = Provider.of<UserState>(context, listen: false);
     Query query = _firestore
         .collection('sales')
         .doc(franchiseID)
@@ -37,8 +37,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
 
     // Apply search filter
     if (userState.role == 'franchisee') {
-      query = query.where('StoreID',
-          isEqualTo: userState.franchiseInternalID);
+      query = query.where('StoreID', isEqualTo: userState.franchiseInternalID);
     }
 
     // Apply search filter
@@ -180,8 +179,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     final double screenWidth = MediaQuery.of(context).size.width;
 
     return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchFranchiseAddress(
-          order['StoreID']), // Fetch the address based on the StoreID
+      future: _fetchFranchiseAddress(order['StoreID']),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(
@@ -305,14 +303,17 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   ),
                   const SizedBox(height: 10),
                   InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
+                    onTap: () async {
+                      final shouldRefresh = await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => OrderDetails(
                             orderId: order['OrderID'].toString(),
                           ),
                         ),
                       );
+                      if (shouldRefresh == true) {
+                        setState(() {}); // Reload the page
+                      }
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.end,

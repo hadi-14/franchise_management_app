@@ -278,6 +278,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                       } else {
                         _animationController.forward();
                       }
+
                       setState(() {
                         _isExpanded = !_isExpanded;
                       });
@@ -290,87 +291,128 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
     );
   }
 
-  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.of(context).size.width > 600
-            ? 3
-            : 2, // Adjusts the number of columns based on screen width
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 2,
-        childAspectRatio: MediaQuery.of(context).size.width > 600
-            ? 0.8
-            : 0.7, // Adjusts the aspect ratio based on screen width
-      ),
-      itemCount: data.length,
-      itemBuilder: (context, index) {
-        final product = data[index].data() as Map<String, dynamic>;
-        product['ID'] = data[index].id;
+Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
+  return GridView.builder(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 2,
+      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 0.8 : 0.7,
+    ),
+    itemCount: data.length,
+    itemBuilder: (context, index) {
+      final product = data[index].data() as Map<String, dynamic>;
+      product['ID'] = data[index].id;
 
-        return InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => ProductDetailsPage(product: product)),
-            );
-          },
-          child: SizedBox(
-            width: 250,
-            height: 181,
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: Image.network(
-                    width: 250,
-                    height: 135,
-                    product['image'] ?? "https://via.placeholder.com/250x135",
-                    alignment: Alignment.center,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  top: 135,
-                  child: Container(
-                    width: 250,
-                    height: 66,
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: theme.primaryBackground,
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(10),
-                        bottomRight: Radius.circular(10),
+      return InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ProductDetailsPage(product: product)),
+          );
+        },
+        child: SizedBox(
+          width: 250,
+          height: 181,
+          child: Stack(
+            children: [
+              // Card background
+              Positioned(
+                left: 0,
+                top: 0,
+                child: Container(
+                  width: 250,
+                  height: 181,
+                  decoration: BoxDecoration(
+                    color: theme.primaryBackground,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x26686868),
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                        spreadRadius: 3,
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              // Product Image
+              Positioned(
+                left: 0,
+                top: 0,
+                child: Image.network(
+                  width: 250,
+                  height: 135,
+                  product['image'] ?? "https://via.placeholder.com/250x135",
+                  alignment: Alignment.center,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              // Product details and edit icon
+              Positioned(
+                left: 0,
+                top: 135,
+                child: Container(
+                  width: 250,
+                  height: 66,
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: theme.primaryBackground,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(10),
+                      bottomRight: Radius.circular(10),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product['productName'],
-                          style: theme.bodyLarge,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product['productName'],
+                        style: theme.bodyLarge,
+                      ),
+                      Text(
+                        '\$ ${product['price']}',
+                        style: theme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: theme.primary,
                         ),
-                        Text(
-                          '\$ ${product['price']}',
-                          style: theme.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: theme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Edit icon in front with a round background
+              if (Provider.of<UserState>(context).role == 'owner' ||
+                  Provider.of<UserState>(context).role == 'staff')
+                Positioned(
+                  right: 10,
+                  bottom: 75, // Adjust position relative to the card
+                  child: CircleAvatar(
+                    backgroundColor: theme.primary,
+                    radius: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddProducts(productData: product),
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildOverlayOptions(FlutterFlowTheme theme) {
     return Positioned(

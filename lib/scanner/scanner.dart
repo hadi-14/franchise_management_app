@@ -122,9 +122,9 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
         );
       } finally {
         // Navigate back after a short delay
-        Future.delayed(const Duration(seconds: 1), () {
+        // Future.delayed(const Duration(seconds: 1), () {
           Navigator.pop(context, barcode);
-        });
+        // });
       }
     }
   }
