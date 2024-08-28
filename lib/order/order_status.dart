@@ -38,7 +38,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     // Apply search filter
     if (userState.role == 'franchisee') {
       query = query.where('StoreID',
-          isEqualTo: int.parse(userState.franchiseInternalID));
+          isEqualTo: userState.franchiseInternalID);
     }
 
     // Apply search filter

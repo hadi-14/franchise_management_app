@@ -20,12 +20,15 @@ class UserState with ChangeNotifier {
   String get franchiseInternalID => _franchiseInternalID;
   String get role => _role;
   Map<String, dynamic> get address => _address;
-  String get userName => _auth.currentUser?.displayName ?? 'Guest'; // Safe access
-  String get profilePhoto => _auth.currentUser?.photoURL ?? 'https://via.placeholder.com/150'; // Safe access with default
-  String get email => _auth.currentUser?.email ?? 'No email'; // Safe access with default
+  String get userName => _auth.currentUser?.displayName ?? 'Guest';
+  String get profilePhoto => _auth.currentUser?.photoURL ?? 'https://via.placeholder.com/150';
+  String get email => _auth.currentUser?.email ?? 'No email';
   String? get customerID => _customerID;
   String? get phoneNumber => _phoneNumber;
   String? get company => _company;
+
+  // New isLoggedIn method
+  bool get isLoggedIn => _user != null;
 
   UserState() {
     _auth.authStateChanges().listen(_onAuthStateChanged);

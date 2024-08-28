@@ -205,7 +205,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      if (order['Address'])
                         Text(
                           '${order['address']['street']}, ${order['address']['city']}, ${order['address']['state']}, ${order['address']['country']}, ${order['address']['zip']}',
                           style: const TextStyle(

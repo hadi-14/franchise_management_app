@@ -1,9 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../Common/flutter_flow_theme.dart';
+import '../Common/user_state.dart';
+import '../order/order_now.dart';
 import 'login_page.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
+
+  void _handleGetStarted(BuildContext context) {
+    final userState = Provider.of<UserState>(context, listen: false);
+
+    if (userState.isLoggedIn) {
+      // If the user is logged in, navigate to the OrderNowPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => OrderNowFranchisePage(franchiseID: userState.franchiseInternalID)),
+      );
+    } else {
+      // If the user is not logged in, navigate to the LoginPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +50,6 @@ class LandingPage extends StatelessWidget {
             ],
           ),
           color: theme.primaryBackground,
-          // Uncomment the following lines if the background image is needed.
-          // image: DecorationImage(
-          //   image: AssetImage('assets/images/Landingpagefinal.png'),
-          //   fit: BoxFit.cover, // Use BoxFit.cover to adapt the image to the screen size
-          // ),
         ),
         child: Stack(
           children: <Widget>[
@@ -41,13 +57,7 @@ class LandingPage extends StatelessWidget {
               top: screenHeight * 0.9, // 90% of the screen height
               left: screenWidth * 0.05, // 5% from the left
               child: InkWell(
-                onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const LoginPage()),
-                        );
-                      },
+                onTap: () => _handleGetStarted(context),
                 child: Container(
                   width: screenWidth * 0.91, // 91% of the screen width
                   height: screenHeight * 0.07, // 7% of the screen height
@@ -114,7 +124,7 @@ class LandingPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     SizedBox(
-                      width: screenWidth  * 0.95,
+                      width: screenWidth * 0.95,
                       child: Text(
                         "Let's delve into Varieties of coffee",
                         textAlign: TextAlign.left,
@@ -128,7 +138,7 @@ class LandingPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
-                      width: screenWidth  * 0.95,
+                      width: screenWidth * 0.95,
                       child: Text(
                         'Join us in exploring a range of coffee flavors with just a few clicks.',
                         textAlign: TextAlign.left,

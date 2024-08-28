@@ -96,7 +96,7 @@ class _AddProductsState extends State<AddProducts> {
           'desc': _productDescController.text,
           'image': _imageUrl,
           'price': double.tryParse(_totalAmountController.text) ?? 0.0,
-          'productID': _skuController.text,
+          'upcCode': _skuController.text,
           'productName': _productNameController.text,
           'quantity': int.tryParse(_quantityController.text) ?? 0,
           'itemsInBox': int.tryParse(_itemsInBoxController.text) ?? 0, // Adding Items in Box
@@ -109,8 +109,16 @@ class _AddProductsState extends State<AddProducts> {
         await _firestore
             .collection('product')
             .doc(franchiseID)
-            .collection('items')
+            .collection('list')
             .add(productData);
+
+        // Show a snackbar indicating the product has been added
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product has been added'),
+            duration: Duration(seconds: 1),
+          ),
+        );
 
         // Reset the form after submission
         _resetForm();
