@@ -1,12 +1,11 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
 
+import '../Common/user_state.dart';
 import 'scanner_error_widget.dart';
-import 'scanned_barcode_label.dart';
-import 'scanner_button_widgets.dart';
 
 class BarcodeScannerWithZoom extends StatefulWidget {
   const BarcodeScannerWithZoom({super.key});
@@ -69,24 +68,64 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
     );
   }
 
-  void _onDetect(BarcodeCapture capture) {
+  void _onDetect(BarcodeCapture capture) async {
+    final userState = Provider.of<UserState>(context, listen: false);
+
     if (_isProcessingBarcode) return; // Prevent re-entry if already processing
     final barcode = capture.barcodes.first.rawValue;
     if (barcode != null) {
       setState(() {
         _isProcessingBarcode = true;
       });
-      // Show a snackbar indicating that the product was added to the inventory
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Product $barcode added to inventory'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      // Navigate back after a short delay
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pop(context, barcode);
-      });
+
+      // Assume 'products' collection exists with a document for the scanned UPC
+      final CollectionReference productsCollection =
+          FirebaseFirestore.instance.collection('product').doc(userState.franchiseID).collection('list');
+
+      try {
+        // Fetch product with the scanned UPC code
+        final productSnapshot = await productsCollection
+            .where('upcCode', isEqualTo: barcode)
+            .limit(1)
+            .get();
+
+        if (productSnapshot.docs.isNotEmpty) {
+          // Update product with new data (example: increment stock count)
+          final productDoc = productSnapshot.docs.first;
+          await productsCollection.doc(productDoc.id).update({
+            'quantity': FieldValue.increment(1), // Example: Increment stock count
+          });
+
+          // Show a snackbar indicating that the product was updated
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Product with UPC $barcode updated successfully'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          // If product does not exist, show an error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Product with UPC $barcode not found'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        // Handle errors, such as network issues
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating product: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } finally {
+        // Navigate back after a short delay
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, barcode);
+        });
+      }
     }
   }
 
@@ -119,14 +158,35 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                 width: size.width,
                 height: size.height,
                 decoration: const BoxDecoration(color: Color(0xFFFAFAFA)),
-                child: Stack(
+                child: Column(
                   children: [
-                    Positioned(
-                      left: 23,
-                      top: 165,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.black),
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                          const Text(
+                            'Scan',
+                            style: TextStyle(
+                              color: Color(0xFF353934),
+                              fontSize: 18,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 20), // Placeholder for alignment
+                        ],
+                      ),
+                    ),
+                    Expanded(
                       child: Container(
-                        width: size.width - 46,
-                        height: size.height * 0.5,
+                        margin: const EdgeInsets.all(20),
                         decoration: ShapeDecoration(
                           shape: RoundedRectangleBorder(
                             side: const BorderSide(width: 1, color: Color(0xFFE0E0E0)),
@@ -143,53 +203,17 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: 23,
-                      top: 56,
-                      child: Container(
-                        width: size.width - 46,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.black),
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                            ),
-                            const Text(
-                              'Scan',
-                              style: TextStyle(
-                                color: Color(0xFF353934),
-                                fontSize: 18,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 20), // Placeholder for alignment
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 38,
-                      top: size.height * 0.75,
-                      child: Container(
-                        width: size.width - 76,
-                        child: Column(
-                          children: [
-                            _buildZoomScaleSlider(),
-                          ],
-                        ),
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildZoomScaleSlider(),
                     ),
                   ],
                 ),
               ),
             ),
             Positioned(
+              bottom: 20,
               left: size.width * 0.2,
-              top: size.height * 0.9,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -213,7 +237,9 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                   const SizedBox(width: 54),
                   IconButton(
                     icon: const Icon(Icons.flash_on, color: Color(0xFFD09A6C)),
-                    onPressed: () {},
+                    onPressed: () {
+                      controller.toggleTorch();
+                    },
                   ),
                 ],
               ),

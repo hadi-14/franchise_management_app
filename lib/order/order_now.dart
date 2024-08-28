@@ -146,7 +146,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                 : Container(
                     width: screenWidth * 0.6,
                     height: 30,
-                    child: Text(userState.company ?? '', style: theme.headlineSmall,),
+                    child: Text(userState.company ?? '', style: theme.labelSmall),
                   ),
             SizedBox(width: screenWidth * 0.06),
             SizedBox(
