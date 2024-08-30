@@ -15,10 +15,15 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  String _errorMessage = '';
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   Future<void> _signInWithEmail() async {
+    setState(() {
+      _errorMessage = '';
+    });
+
     try {
       await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -26,17 +31,42 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       Navigator.pushReplacementNamed(context, '/homePage');
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        switch (e.code) {
+          case 'user-not-found':
+            _errorMessage = 'No user found with this email.';
+            break;
+          case 'wrong-password':
+            _errorMessage = 'Incorrect password.';
+            break;
+          case 'invalid-email':
+            _errorMessage = 'Invalid email address.';
+            break;
+          case 'user-disabled':
+            _errorMessage = 'User has been disabled.';
+            break;
+          default:
+            _errorMessage = 'Login failed. Please try again.';
+        }
+      });
     } catch (e) {
+      setState(() {
+        _errorMessage = 'An unexpected error occurred. Please try again later.';
+      });
       print(e);
     }
   }
 
   Future<void> _signInWithGoogle() async {
+    setState(() {
+      _errorMessage = '';
+    });
+
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // The user canceled the sign-in
-        return;
+        return; // The user canceled the sign-in
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -50,41 +80,73 @@ class _LoginPageState extends State<LoginPage> {
       await _auth.signInWithCredential(credential);
 
       Navigator.pushReplacementNamed(context, '/homePage');
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        switch (e.code) {
+          case 'account-exists-with-different-credential':
+            _errorMessage =
+                'An account already exists with a different sign-in method.';
+            break;
+          case 'invalid-credential':
+            _errorMessage = 'Invalid credentials. Please try again.';
+            break;
+          case 'operation-not-allowed':
+            _errorMessage = 'Operation not allowed. Please contact support.';
+            break;
+          case 'user-disabled':
+            _errorMessage = 'User has been disabled.';
+            break;
+          case 'user-not-found':
+            _errorMessage = 'No user found with this email.';
+            break;
+          default:
+            _errorMessage = 'Login failed. Please try again.';
+        }
+      });
     } catch (e) {
+      setState(() {
+        _errorMessage = 'An unexpected error occurred. Please try again later.';
+      });
       print(e);
     }
   }
 
   Future<void> _resetPassword() async {
+    setState(() {
+      _errorMessage = '';
+    });
+
     if (_emailController.text.isEmpty) {
-      _showMessage('Please enter your email address');
+      setState(() {
+        _errorMessage = 'Please enter your email address';
+      });
       return;
     }
 
     try {
       await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
-      _showMessage('Password reset link has been sent to your email');
+      setState(() {
+        _errorMessage = 'Password reset link has been sent to your email';
+      });
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        switch (e.code) {
+          case 'invalid-email':
+            _errorMessage = 'Invalid email address.';
+            break;
+          case 'user-not-found':
+            _errorMessage = 'No user found with this email.';
+            break;
+          default:
+            _errorMessage = 'Failed to send password reset email.';
+        }
+      });
     } catch (e) {
+      setState(() {
+        _errorMessage = 'An unexpected error occurred. Please try again later.';
+      });
       print(e);
-      _showMessage('Failed to send password reset email');
     }
-  }
-
-  void _showMessage(String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -101,7 +163,8 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(0.0, 48.0, 0.0, 16.0),
+              padding:
+                  const EdgeInsetsDirectional.fromSTEB(0.0, 48.0, 0.0, 16.0),
               child: Center(
                 child: Text(
                   'Login',
@@ -125,7 +188,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0, 0.0, 32.0),
+              padding:
+                  const EdgeInsetsDirectional.fromSTEB(0.0, 0, 0.0, 32.0),
               child: Text(
                 'Please enter your email and password to sign in.',
                 style: theme.bodySmall.override(
@@ -175,6 +239,19 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          _errorMessage,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
@@ -188,7 +265,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         child: Text(
-                          'Login In',
+                          'Login',
                           style: theme.titleSmall.override(
                             fontFamily: 'Readex Pro',
                             color: theme.primaryText,
@@ -198,8 +275,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildSocialSignInButtons(theme),
-                    const SizedBox(height: 8),
+                    // _buildSocialSignInButtons(theme),
+                    // const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsetsDirectional.fromSTEB(
                           0.0, 0, 0.0, 32.0),

@@ -1,7 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:firebase_storage/firebase_storage.dart'; // Import for Firebase Storage
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../Common/drawer.dart';
@@ -11,6 +10,7 @@ import '../product/add_products.dart';
 import '../product/product_categories.dart';
 import '../product/product_detail_view.dart';
 import 'package:change_case/change_case.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class OrderNowFranchisePage extends StatefulWidget {
   final String franchiseID;
@@ -24,6 +24,8 @@ class OrderNowFranchisePage extends StatefulWidget {
 class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
     with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage =
+      FirebaseStorage.instance; // Firebase Storage instance
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedCategoryID;
@@ -66,8 +68,6 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
   }
 
   Future<void> _fetchCategories() async {
-    if (widget.franchiseID.isEmpty) return;
-
     final snapshot = await _firestore
         .collection('product')
         .doc(widget.franchiseID)
@@ -106,13 +106,21 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
     return snapshot.docs;
   }
 
+  Future<String> _fetchImageFromStorage(String imageRef) async {
+    try {
+      return await _storage.refFromURL(imageRef).getDownloadURL();
+    } catch (e) {
+      print('Error fetching image from storage: $e');
+      return "https://via.placeholder.com/250x135"; // Fallback to a placeholder if fetching fails
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userState = Provider.of<UserState>(context);
 
     final theme = FlutterFlowTheme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = Platform.isAndroid || Platform.isIOS;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -143,11 +151,22 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                       ),
                     ),
                   )
-                : Container(
-                    width: screenWidth * 0.6,
-                    height: 30,
-                    child: Text(userState.company ?? '', style: theme.labelSmall),
-                  ),
+                : !(userState.role == 'franchisee')
+                    ? SizedBox(
+                        width: screenWidth * 0.6,
+                        height: 30,
+                        child: Text(userState.company ?? '',
+                            style: const TextStyle(
+                              color: Color(0xFF552E05),
+                              fontSize: 24,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w400,
+                            )),
+                      )
+                    : SizedBox(
+                        width: screenWidth * 0.6,
+                        height: 30,
+                      ),
             SizedBox(width: screenWidth * 0.06),
             SizedBox(
               width: 30,
@@ -221,22 +240,12 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                     left: screenWidth * 0.05,
                     right: screenWidth * 0.05,
                   ),
-                  child: DropdownButton<String>(
-                    value: _selectedCategoryID,
-                    hint: const Text('Select Category'),
-                    isExpanded: true,
-                    borderRadius: BorderRadius.circular(12.0),
-                    items: _categories.entries
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
+                  child: Frame313659(
+                    categories: _categories,
+                    selectedCategoryID: _selectedCategoryID,
+                    onCategorySelected: (String categoryID) {
                       setState(() {
-                        _selectedCategoryID = value;
+                        _selectedCategoryID = categoryID;
                       });
                     },
                   ),
@@ -258,7 +267,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                       return const Center(child: Text('No products found.'));
                     }
 
-                    return _buildCardLayout(data, theme);
+                    return _buildCardLayout(data, theme, userState);
                   },
                 ),
               ),
@@ -273,17 +282,16 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                   padding: const EdgeInsets.only(bottom: 70.0),
                   child: FloatingActionButton(
                     onPressed: () {
+                      // Toggle animation without calling setState
                       if (_isExpanded) {
                         _animationController.reverse();
                       } else {
                         _animationController.forward();
                       }
-
-                      setState(() {
-                        _isExpanded = !_isExpanded;
-                      });
+                      _isExpanded = !_isExpanded;
                     },
                     backgroundColor: theme.primary,
+                    shape: const CircleBorder(),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 )
@@ -291,128 +299,162 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
     );
   }
 
-Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
-  return GridView.builder(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 2,
-      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 0.8 : 0.7,
-    ),
-    itemCount: data.length,
-    itemBuilder: (context, index) {
-      final product = data[index].data() as Map<String, dynamic>;
-      product['ID'] = data[index].id;
+  Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme,
+      UserState userState) {
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 2,
+        childAspectRatio: MediaQuery.of(context).size.width > 600 ? 0.8 : 0.7,
+      ),
+      itemCount: data.length,
+      itemBuilder: (context, index) {
+        final product = data[index].data() as Map<String, dynamic>;
+        product['ID'] = data[index].id;
 
-      return InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => ProductDetailsPage(product: product)),
-          );
-        },
-        child: SizedBox(
-          width: 250,
-          height: 181,
-          child: Stack(
-            children: [
-              // Card background
-              Positioned(
-                left: 0,
-                top: 0,
-                child: Container(
-                  width: 250,
-                  height: 181,
-                  decoration: BoxDecoration(
-                    color: theme.primaryBackground,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x26686868),
-                        blurRadius: 8,
-                        offset: Offset(0, 1),
-                        spreadRadius: 3,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Product Image
-              Positioned(
-                left: 0,
-                top: 0,
-                child: Image.network(
-                  width: 250,
-                  height: 135,
-                  product['image'] ?? "https://via.placeholder.com/250x135",
-                  alignment: Alignment.center,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              // Product details and edit icon
-              Positioned(
-                left: 0,
-                top: 135,
-                child: Container(
-                  width: 250,
-                  height: 66,
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: theme.primaryBackground,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(10),
-                      bottomRight: Radius.circular(10),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product['productName'],
-                        style: theme.bodyLarge,
-                      ),
-                      Text(
-                        '\$ ${product['price']}',
-                        style: theme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: theme.primary,
+        return FutureBuilder<String>(
+          future: _fetchImageFromStorage(product['image'] ?? ''),
+          builder: (context, snapshot) {
+            String imageUrl =
+                product['image'] ?? "https://via.placeholder.com/250x135";
+            if (snapshot.connectionState == ConnectionState.done &&
+                snapshot.hasData) {
+              imageUrl = snapshot.data!;
+            }
+            return InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          ProductDetailsPage(product: product)),
+                );
+              },
+              child: SizedBox(
+                width: 250,
+                height: 224, // Increased height to accommodate more content
+                child: Stack(
+                  children: [
+                    // Card background
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      child: Container(
+                        width: 250,
+                        height: 224, // Increased height to match container
+                        decoration: BoxDecoration(
+                          color: theme.primaryBackground,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x26686868),
+                              blurRadius: 8,
+                              offset: Offset(0, 1),
+                              spreadRadius: 3,
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // Product Image
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      child: Image.network(
+                        width: 250,
+                        height: 135,
+                        imageUrl,
+                        alignment: Alignment.center,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    // Product details and price alignment
+                    Positioned(
+                      left: 0,
+                      top: 140, // Adjusted top position for added padding
+                      child: Container(
+                        width: 250,
+                        height: 66, // Increased height for better padding
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 2, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: theme.primaryBackground,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(10),
+                            bottomRight: Radius.circular(10),
+                          ),
+                        ),
+                        child: Stack(
+                          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    product['productName'],
+                                    style: theme.bodyLarge.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '\$ ${product['price']}',
+                                    style: theme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.primary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (userState.role == 'owner' ||
+                                userState.role == 'staff')
+                              Positioned(
+                                left: 130,
+                                top: 15,
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                      4.0), // Bigger hitbox
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    // color: theme.primary.withOpacity(0.1),
+                                  ),
+                                  child: IconButton(
+                                    icon: SvgPicture.asset(
+                                        'assets/Icons/edit.svg',
+                                        semanticsLabel: 'Edit Logo'),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AddProducts(productData: product),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // Edit icon in front with a round background
-              if (Provider.of<UserState>(context).role == 'owner' ||
-                  Provider.of<UserState>(context).role == 'staff')
-                Positioned(
-                  right: 10,
-                  bottom: 75, // Adjust position relative to the card
-                  child: CircleAvatar(
-                    backgroundColor: theme.primary,
-                    radius: 20,
-                    child: IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddProducts(productData: product),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildOverlayOptions(FlutterFlowTheme theme) {
     return Positioned(
@@ -422,33 +464,31 @@ Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
         opacity: _opacityAnimation,
         child: ScaleTransition(
           scale: _scaleAnimation,
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               FloatingActionButton(
                 heroTag: 'addProduct',
                 onPressed: () {
-                  setState(() {
-                    _isExpanded = false;
-                  });
-                  _animationController.reverse();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => AddProducts(),
+                      builder: (context) => const AddProducts(),
                     ),
                   );
                 },
                 backgroundColor: theme.primaryBackground,
-                child: Icon(Icons.add_shopping_cart, color: theme.primaryText),
+                shape: const CircleBorder(),
+                mini: true,
+                child: Icon(
+                  Icons.add_shopping_cart,
+                  color: theme.secondaryText,
+                  size: 20,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 5),
               FloatingActionButton(
                 heroTag: 'addCategory',
                 onPressed: () {
-                  setState(() {
-                    _isExpanded = false;
-                  });
-                  _animationController.reverse();
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const CategoryPage(),
@@ -456,11 +496,61 @@ Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme) {
                   );
                 },
                 backgroundColor: theme.primaryBackground,
-                child: Icon(Icons.category, color: theme.primaryText),
+                shape: const CircleBorder(),
+                mini: true,
+                child: Icon(
+                  Icons.category,
+                  color: theme.secondaryText,
+                  size: 20,
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class Frame313659 extends StatelessWidget {
+  final Map<String, String> categories;
+  final String? selectedCategoryID;
+  final ValueChanged<String> onCategorySelected;
+
+  const Frame313659({
+    required this.categories,
+    required this.selectedCategoryID,
+    required this.onCategorySelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.entries.map((entry) {
+          final isSelected = entry.key == selectedCategoryID;
+          return GestureDetector(
+            onTap: () => onCategorySelected(entry.key),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              decoration: BoxDecoration(
+                color: isSelected ? Color(0xFFD09A6C) : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Color(0xFF876A51)),
+              ),
+              child: Text(
+                entry.value,
+                style: theme.bodyMedium.copyWith(
+                  color: isSelected ? Colors.white : Color(0xFF353934),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
