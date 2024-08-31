@@ -570,19 +570,21 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   return const Center(child: Text('No orders found.'));
                 }
 
-                return ListView.builder(
-                  itemCount: data.length,
-                  itemBuilder: (context, index) {
-                    final order = data[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: userState.role == 'owner' ||
-                              userState.role == 'staff'
-                          ? _buildOwnerOrStaffCard(context, order)
-                          : _buildOrderCard(context,
-                              order), // Fallback to a generic order card for non-owner/staff roles
-                    );
-                  },
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 75.0),
+                  child: ListView.builder(
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final order = data[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: userState.role == 'owner' ||
+                                userState.role == 'staff'
+                            ? _buildOwnerOrStaffCard(context, order)
+                            : _buildOrderCard(context, order), // Fallback to a generic order card for non-owner/staff roles
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -596,7 +598,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     switch (state) {
       case 'Pending':
         return Colors.white;
-      case 'Packed':
+      case 'Packed' || 'Approved':
         return const Color(0xFF85C2AA);
       case 'Shipped':
         return const Color(0xFFE0BAE8);
@@ -609,7 +611,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     switch (state) {
       case 'Pending':
         return const Color(0xFFB47E51);
-      case 'Packed':
+      case 'Packed' || 'Approved':
         return Colors.white;
       case 'Shipped':
         return const Color(0xFF8D5499);
@@ -622,7 +624,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     switch (state) {
       case 'Pending':
         return const Color(0xFFDDBDA2);
-      case 'Packed':
+      case 'Packed' || 'Approved':
         return const Color(0xFFB1D1C4);
       case 'Shipped':
         return const Color(0xFFC99AD3);

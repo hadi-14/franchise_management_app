@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../Common/user_state.dart';
+import '../product/add_products.dart';
 import 'scanner_error_widget.dart';
 
 class BarcodeScannerWithZoom extends StatefulWidget {
@@ -53,12 +54,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
           }
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Product with UPC $barcode not found'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // Show a dialog if no product is found
+        _showProductNotFoundDialog(barcode);
       }
     } catch (e) {
       print('Error fetching product name: $e');
@@ -90,6 +87,40 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
     setState(() {
       _allowScan = true; // Enable scanning for one barcode
     });
+  }
+
+  void _showProductNotFoundDialog(String barcode) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Product Not Found'),
+          content: const Text('No product found with this UPC code. Would you like to add a new product?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddProducts(
+                      productData: {'upcCode': barcode}, // Pass the UPC code to the AddProducts page
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Add Product'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildZoomScaleSlider() {

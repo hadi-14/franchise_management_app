@@ -15,7 +15,8 @@ class CheckoutCart extends StatelessWidget {
     final cartItems = appState.cart;
 
     return Scaffold(
-      appBar: AppBar(toolbarOpacity: 0,
+      appBar: AppBar(
+        toolbarOpacity: 0,
         title: const Center(
           child: Text(
             'Checkout',
@@ -114,6 +115,11 @@ class CheckoutCart extends StatelessWidget {
       List<Map<String, dynamic>> cartItems,
       UserState userState,
       AppState appState) {
+    final subtotal = _calculateSubtotal(cartItems);
+    final tax = _calculateTax(cartItems);
+    final serviceFee = subtotal * 0.01;
+    final total = subtotal + tax + serviceFee;
+
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.fromLTRB(MediaQuery.of(context).size.width * 0.05,
@@ -132,28 +138,37 @@ class CheckoutCart extends StatelessWidget {
         children: [
           _buildSummaryRow(
             'Subtotal',
-            '\$${(_calculateSubtotal(cartItems)).toStringAsFixed(2)}',
+            '\$${subtotal.toStringAsFixed(2)}',
+          ),
+          _buildSummaryRow(
+            'Tax',
+            '+\$${tax.toStringAsFixed(2)}',
           ),
           _buildSummaryRow(
             'Service Charges (1%)',
-            '+\$${(_calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}',
+            '+\$${serviceFee.toStringAsFixed(2)}',
           ),
           const Divider(height: 2.0),
           _buildSummaryRow(
             'Total Payment',
-            '\$${(_calculateSubtotal(cartItems) + _calculateSubtotal(cartItems) * 0.01).toStringAsFixed(2)}',
+            '\$${total.toStringAsFixed(2)}',
             isTotal: true,
           ),
           const SizedBox(height: 10),
           InkWell(
-            onTap: () async {
-              await _processOrder(context, userState, cartItems, appState);
-            },
+            onTap: total > 0
+                ? () async {
+                    await _processOrder(context, userState, cartItems, appState,
+                        tax, serviceFee, total);
+                  }
+                : null,
             child: Container(
               width: MediaQuery.of(context).size.width * 0.8,
               height: 56,
               decoration: ShapeDecoration(
-                color: const Color(0xFFD09A6C),
+                color: total > 0
+                    ? const Color(0xFFD09A6C)
+                    : Colors.grey, // Grey out if total is 0
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -180,6 +195,13 @@ class CheckoutCart extends StatelessWidget {
   double _calculateSubtotal(List<Map<String, dynamic>> cartItems) {
     return cartItems.fold(
         0, (total, item) => total + item['price'] * item['quantity']);
+  }
+
+  double _calculateTax(List<Map<String, dynamic>> cartItems) {
+    return cartItems.fold(0, (total, item) {
+      final taxPercentage = item['tax'] ?? 0.0;
+      return total + (item['price'] * item['quantity'] * taxPercentage / 100);
+    });
   }
 
   Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
@@ -213,15 +235,17 @@ class CheckoutCart extends StatelessWidget {
     );
   }
 
-  Future<void> _processOrder(BuildContext context, UserState userState,
-      List<Map<String, dynamic>> cartItems, dynamic appState) async {
+  Future<void> _processOrder(
+      BuildContext context,
+      UserState userState,
+      List<Map<String, dynamic>> cartItems,
+      AppState appState,
+      double tax,
+      double serviceFee,
+      double totalAmount) async {
     final FirebaseFirestore _firestore = FirebaseFirestore.instance;
     final String franchiseID = userState.franchiseID;
     final String createdBy = userState.userName;
-
-    double subtotal = _calculateSubtotal(cartItems);
-    double serviceFee = subtotal * 0.01;
-    double totalAmount = subtotal + serviceFee;
 
     // Create an order ID (example: incrementing an integer)
     final snapshot = await _firestore
@@ -240,21 +264,21 @@ class CheckoutCart extends StatelessWidget {
     final orderData = {
       'OrderID': nextOrderID,
       'Date': Timestamp.now(),
-      'NetTotal': subtotal,
+      'NetTotal': _calculateSubtotal(cartItems),
+      'Tax': tax,
       'ServiceFee': serviceFee,
       'State': 'Pending',
       'StoreID': userState.franchiseInternalID,
-      'Tax': 0, // Assuming tax is 0, adjust as needed
       'TotalAmount': totalAmount,
       'createdBy': createdBy,
       'items': cartItems.map((item) {
         return {
           'Category': item['categoryID'],
-          'Product': item['productID'],
+          'productName': item['productName'],
           'Quantity': item['quantity'],
           'Total': item['quantity'] * item['price'],
           'UnitPrice': item['price'],
-          'isBox': item['isBox'] ?? false,
+          'isBox': item['type'] == 'Box',
           'piecesPerBox': item['piecesPerBox'] ?? 0,
         };
       }).toList(),
@@ -346,6 +370,7 @@ class CartItem extends StatelessWidget {
                       width: MediaQuery.of(context).size.width * 0.4,
                       child: Text(
                         product['productName'],
+                        maxLines: 3,
                         style: const TextStyle(
                           color: Color(0xFF353934),
                           fontSize: 16,
@@ -359,7 +384,7 @@ class CartItem extends StatelessWidget {
                     left: 11,
                     top: 103,
                     child: SizedBox(
-                      width: 42,
+                      width: MediaQuery.of(context).size.width * 0.4,
                       child: Text(
                         '\$${product['price']}',
                         style: const TextStyle(

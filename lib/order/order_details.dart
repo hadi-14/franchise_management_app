@@ -52,13 +52,36 @@ class OrderDetails extends StatelessWidget {
         .get();
 
     if (orderSnapshot.docs.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('sales')
-          .doc(userState.franchiseID)
-          .collection('list')
-          .doc(orderSnapshot.docs.first.id)
-          .update({'State': newState});
-      
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Only reduce stock for 'Approved' or 'Shipped' state
+      if (newState == 'Approved' || newState == 'Shipped') {
+        final List<dynamic> productList = orderData['items'];
+
+        for (var product in productList) {
+          final productRef = FirebaseFirestore.instance
+              .collection('product')
+              .doc(userState.franchiseID)
+              .collection('list')
+              .doc(product['Product']);
+
+          final productSnapshot = await productRef.get();
+
+          if (productSnapshot.exists) {
+            final currentQuantity = productSnapshot.data()?['quantity'] ?? 0;
+            final updatedQuantity = currentQuantity - product['Quantity'];
+
+            // Update the product quantity
+            batch.update(productRef, {'quantity': updatedQuantity});
+          }
+        }
+      }
+
+      // Update the order state
+      batch.update(orderSnapshot.docs.first.reference, {'State': newState});
+
+      await batch.commit();
+
       // Reload the previous page
       Navigator.pop(context, true);
     } else {
@@ -117,7 +140,8 @@ class OrderDetails extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.all(18.0),
-                child: _buildBottomButtons(orderData, userState, state, context),
+                child:
+                    _buildBottomButtons(orderData, userState, state, context),
               ),
             ],
           );
@@ -277,8 +301,8 @@ class OrderDetails extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomButtons(
-      Map<String, dynamic> orderData, UserState userState, String state, BuildContext context) {
+  Widget _buildBottomButtons(Map<String, dynamic> orderData,
+      UserState userState, String state, BuildContext context) {
     return Row(
       children: [
         if (state == 'Pending') ...[

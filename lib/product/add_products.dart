@@ -25,7 +25,7 @@ class _AddProductsState extends State<AddProducts> {
   final _totalAmountController = TextEditingController();
   final _taxController = TextEditingController();
   final _quantityController = TextEditingController();
-  final _itemsInBoxController = TextEditingController(); 
+  final _itemsInBoxController = TextEditingController();
 
   bool isPieceSelected = false;
   bool isBoxSelected = false;
@@ -46,13 +46,19 @@ class _AddProductsState extends State<AddProducts> {
       _productNameController.text = widget.productData!['productName'] ?? '';
       _productDescController.text = widget.productData!['desc'] ?? '';
       _skuController.text = widget.productData!['upcCode'] ?? '';
-      _totalAmountController.text = widget.productData!['price'].toString();
-      _quantityController.text = widget.productData!['quantity'].toString();
-      _itemsInBoxController.text = widget.productData!['itemsInBox'].toString();
-      isPieceSelected = widget.productData!['type']['piece'] ?? false;
-      isBoxSelected = widget.productData!['type']['box'] ?? false;
-      selectedCategory = widget.productData!['categoryID'];
-      _imageUrl = widget.productData!['image'];
+      _totalAmountController.text =
+          (widget.productData!['price'] ?? '').toString();
+      _taxController.text = (widget.productData!['tax'] ?? '').toString();
+      _quantityController.text =
+          (widget.productData!['quantity'] ?? '').toString();
+      _itemsInBoxController.text =
+          (widget.productData!['itemsInBox'] ?? '').toString();
+      if (widget.productData!.containsKey('type')) {
+        isPieceSelected = widget.productData!['type']['piece'] ?? false;
+        isBoxSelected = widget.productData!['type']['box'] ?? false;
+      }
+      selectedCategory = widget.productData!['categoryID'] ?? null;
+      _imageUrl = widget.productData!['image'] ?? null;
       productId = widget.productData!['ID']; // Set the product ID for updating
     }
   }
@@ -99,6 +105,21 @@ class _AddProductsState extends State<AddProducts> {
     }
   }
 
+  Future<void> _loadImageFromFirebase() async {
+    if (_imageUrl != null && _imageUrl!.isNotEmpty) {
+      try {
+        final ref = _storage.refFromURL(_imageUrl!);
+        final url = await ref.getDownloadURL();
+        setState(() {
+          _imageUrl = url;
+        });
+      } catch (e) {
+        print('Failed to load image from Firebase Storage: $e');
+        _imageUrl = null;
+      }
+    }
+  }
+
   Future<void> _saveProduct() async {
     // Ensure all required fields are filled out
     if (_productNameController.text.isEmpty ||
@@ -107,11 +128,11 @@ class _AddProductsState extends State<AddProducts> {
         _totalAmountController.text.isEmpty ||
         selectedCategory == null ||
         (_selectedImage == null && _imageUrl == null)) {
-
       // Show a snackbar to notify the user that all fields must be filled
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill out all required fields and add an image.'),
+          content:
+              Text('Please fill out all required fields and add an image.'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -130,14 +151,15 @@ class _AddProductsState extends State<AddProducts> {
         'desc': _productDescController.text,
         'image': _imageUrl,
         'price': double.tryParse(_totalAmountController.text) ?? 0.0,
+        'tax': double.tryParse(_taxController.text) ?? 0.0,
         'upcCode': _skuController.text,
         'productName': _productNameController.text,
         'quantity': int.tryParse(_quantityController.text) ?? 0,
-        'itemsInBox': int.tryParse(_itemsInBoxController.text) ?? 0, 
+        'itemsInBox': int.tryParse(_itemsInBoxController.text) ?? 0,
         'type': {
           'piece': isPieceSelected,
           'box': isBoxSelected,
-        }
+        },
       };
 
       if (productId != null) {
@@ -172,7 +194,9 @@ class _AddProductsState extends State<AddProducts> {
       }
 
       // Reset the form after submission
-      _resetForm();
+      // _resetForm();
+
+      Navigator.of(context).pop();
     }
   }
 
@@ -198,6 +222,11 @@ class _AddProductsState extends State<AddProducts> {
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
+
+    // Load image from Firebase if necessary
+    if (_imageUrl != null && _selectedImage == null) {
+      _loadImageFromFirebase();
+    }
 
     return Scaffold(
       backgroundColor: theme.primaryBackground,
@@ -278,6 +307,7 @@ class _AddProductsState extends State<AddProducts> {
                     selectedCategory = value;
                   });
                 },
+                value: selectedCategory,
               ),
               SizedBox(height: screenHeight * 0.02),
               _buildTypeSelection(theme),
@@ -296,11 +326,13 @@ class _AddProductsState extends State<AddProducts> {
                 theme: theme,
                 keyboardType: TextInputType.number,
                 controller: _itemsInBoxController,
-                enabled: isBoxSelected, 
+                enabled: isBoxSelected,
               ),
               SizedBox(height: screenHeight * 0.05),
               _buildActionButton(
-                label: widget.productData != null ? 'Update Product' : 'Add Product',
+                label: (widget.productData != null)
+                    ? 'Update Product'
+                    : 'Add Product',
                 color: theme.primary,
                 textColor: theme.tertiary,
                 theme: theme,
@@ -314,7 +346,7 @@ class _AddProductsState extends State<AddProducts> {
   }
 
   Widget _buildImagePicker(FlutterFlowTheme theme) {
-    final screenWidth = MediaQuery.of(context).size.width; 
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Center(
       child: Stack(
@@ -398,8 +430,6 @@ class _AddProductsState extends State<AddProducts> {
     );
   }
 
-
-
   Widget _buildInputField({
     required String label,
     required String hint,
@@ -459,6 +489,7 @@ class _AddProductsState extends State<AddProducts> {
     required List<DropdownMenuItem<String>> items,
     required ValueChanged<String?> onChanged,
     double? width,
+    String? value, // Add a value parameter to show the selected value
   }) {
     final screenWidth = MediaQuery.of(context).size.width; // Get screen width
 
@@ -478,6 +509,7 @@ class _AddProductsState extends State<AddProducts> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
+            value: value,
             isExpanded: true,
             decoration: InputDecoration(
               hintText: hint,

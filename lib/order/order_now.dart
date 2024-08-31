@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // Import for Firebase Storage
 import 'package:provider/provider.dart';
-import 'dart:io' show Platform;
 import '../Common/drawer.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
@@ -155,13 +154,15 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                     ? SizedBox(
                         width: screenWidth * 0.6,
                         height: 30,
-                        child: Text(userState.company ?? '',
-                            style: const TextStyle(
-                              color: Color(0xFF552E05),
-                              fontSize: 24,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                            )),
+                        child: Center(
+                          child: Text(userState.company ?? '',
+                              style: const TextStyle(
+                                color: Color(0xFF552E05),
+                                fontSize: 18,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w400,
+                              )),
+                        ),
                       )
                     : SizedBox(
                         width: screenWidth * 0.6,
@@ -301,158 +302,171 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
 
   Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme,
       UserState userState) {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 2,
-        childAspectRatio: MediaQuery.of(context).size.width > 600 ? 0.8 : 0.7,
-      ),
-      itemCount: data.length,
-      itemBuilder: (context, index) {
-        final product = data[index].data() as Map<String, dynamic>;
-        product['ID'] = data[index].id;
+    double containerWidth = (MediaQuery.of(context).size.width - 60) / 2;
 
-        return FutureBuilder<String>(
-          future: _fetchImageFromStorage(product['image'] ?? ''),
-          builder: (context, snapshot) {
-            String imageUrl =
-                product['image'] ?? "https://via.placeholder.com/250x135";
-            if (snapshot.connectionState == ConnectionState.done &&
-                snapshot.hasData) {
-              imageUrl = snapshot.data!;
-            }
-            return InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          ProductDetailsPage(product: product)),
-                );
-              },
-              child: SizedBox(
-                width: 250,
-                height: 224, // Increased height to accommodate more content
-                child: Stack(
-                  children: [
-                    // Card background
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      child: Container(
-                        width: 250,
-                        height: 224, // Increased height to match container
-                        decoration: BoxDecoration(
-                          color: theme.primaryBackground,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x26686868),
-                              blurRadius: 8,
-                              offset: Offset(0, 1),
-                              spreadRadius: 3,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Product Image
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      child: Image.network(
-                        width: 250,
-                        height: 135,
-                        imageUrl,
-                        alignment: Alignment.center,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    // Product details and price alignment
-                    Positioned(
-                      left: 0,
-                      top: 140, // Adjusted top position for added padding
-                      child: Container(
-                        width: 250,
-                        height: 66, // Increased height for better padding
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 2, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: theme.primaryBackground,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(10),
-                            bottomRight: Radius.circular(10),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 75.0),
+      child: GridView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 2,
+          childAspectRatio: 0.65,
+        ),
+        itemCount: data.length,
+        itemBuilder: (context, index) {
+          final product = data[index].data() as Map<String, dynamic>;
+          product['ID'] = data[index].id;
+
+          return FutureBuilder<String>(
+            future: _fetchImageFromStorage(product['image'] ?? ''),
+            builder: (context, snapshot) {
+              String imageUrl =
+                  product['image'] ?? "https://via.placeholder.com/250x135";
+              if (snapshot.connectionState == ConnectionState.done &&
+                  snapshot.hasData) {
+                imageUrl = snapshot.data!;
+              }
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            ProductDetailsPage(product: product)),
+                  );
+                },
+                child: SizedBox(
+                  width: containerWidth,
+                  height: (userState.role == 'owner' || userState.role == 'staff') ? 246 : 224, // Increased height to accommodate more content
+                  child: Stack(
+                    children: [
+                      // Card background
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        child: Container(
+                          width: containerWidth,
+                          height: (userState.role == 'owner' || userState.role == 'staff') ? 246 : 224, // Increased height to match container
+                          decoration: BoxDecoration(
+                            color: theme.primaryBackground,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x26686868),
+                                blurRadius: 8,
+                                offset: Offset(0, 1),
+                                spreadRadius: 3,
+                              ),
+                            ],
                           ),
                         ),
-                        child: Stack(
-                          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    product['productName'],
-                                    style: theme.bodyLarge.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 14,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '\$ ${product['price']}',
-                                    style: theme.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                      color: theme.primary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (userState.role == 'owner' ||
-                                userState.role == 'staff')
-                              Positioned(
-                                left: 130,
-                                top: 15,
-                                child: Container(
-                                  padding: const EdgeInsets.all(
-                                      4.0), // Bigger hitbox
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    // color: theme.primary.withOpacity(0.1),
-                                  ),
-                                  child: IconButton(
-                                    icon: SvgPicture.asset(
-                                        'assets/Icons/edit.svg',
-                                        semanticsLabel: 'Edit Logo'),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AddProducts(productData: product),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                          ],
+                      ),
+                      // Product Image
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        child: Image.network(
+                          width: containerWidth,
+                          height: 135,
+                          imageUrl,
+                          alignment: Alignment.center,
+                          fit: BoxFit.contain,
                         ),
                       ),
-                    ),
-                  ],
+                      // Product details and price alignment
+                      Positioned(
+                        left: 0,
+                        top: 140, // Adjusted top position for added padding
+                        child: Container(
+                          width: containerWidth,
+                          height: (userState.role == 'owner' ||
+                                  userState.role == 'staff')
+                              ? 106
+                              : 84, // Adjusted top position for added padding
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 2, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: theme.primaryBackground,
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(10),
+                              bottomRight: Radius.circular(10),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product['productName'],
+                                style: theme.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '\$ ${product['price']}',
+                                style: theme.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.primary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (userState.role == 'owner' ||
+                                  userState.role == 'staff')
+                                Text(
+                                  'Quantity: ${product['quantity']}',
+                                  style: theme.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.secondaryText,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Edit button for owner or staff
+                      if (userState.role == 'owner' ||
+                          userState.role == 'staff')
+                        Positioned(
+                          left: containerWidth - 60,
+                          bottom: -5,
+                          child: Container(
+                            padding: const EdgeInsets.all(4.0), // Bigger hitbox
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: IconButton(
+                              icon: SvgPicture.asset('assets/Icons/edit.svg',
+                                  semanticsLabel: 'Edit Logo'),
+                              onPressed: () async {
+                                final shouldRefresh =
+                                    await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        AddProducts(productData: product),
+                                  ),
+                                );
+
+                                if (shouldRefresh == true) {
+                                  setState(() {}); // Reload the page
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -535,16 +549,17 @@ class Frame313659 extends StatelessWidget {
             onTap: () => onCategorySelected(entry.key),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8.0),
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
               decoration: BoxDecoration(
-                color: isSelected ? Color(0xFFD09A6C) : Colors.transparent,
+                color: isSelected ? const Color(0xFFD09A6C) : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Color(0xFF876A51)),
+                border: Border.all(color: const Color(0xFF876A51)),
               ),
               child: Text(
                 entry.value,
                 style: theme.bodyMedium.copyWith(
-                  color: isSelected ? Colors.white : Color(0xFF353934),
+                  color: isSelected ? Colors.white : const Color(0xFF353934),
                   fontWeight: FontWeight.w500,
                 ),
               ),
