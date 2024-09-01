@@ -134,11 +134,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                   color: const Color(0xFFFAFAFA),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
-                  shadows: [
+                  shadows: const [
                     BoxShadow(
-                      color: const Color(0x0A000000),
+                      color: Color(0x0A000000),
                       blurRadius: 15,
-                      offset: const Offset(0, 10),
+                      offset: Offset(0, 10),
                       spreadRadius: 0,
                     )
                   ],

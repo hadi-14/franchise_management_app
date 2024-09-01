@@ -339,7 +339,10 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                 },
                 child: SizedBox(
                   width: containerWidth,
-                  height: (userState.role == 'owner' || userState.role == 'staff') ? 246 : 224, // Increased height to accommodate more content
+                  height:
+                      (userState.role == 'owner' || userState.role == 'staff')
+                          ? 246
+                          : 224, // Increased height to accommodate more content
                   child: Stack(
                     children: [
                       // Card background
@@ -348,7 +351,10 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                         top: 0,
                         child: Container(
                           width: containerWidth,
-                          height: (userState.role == 'owner' || userState.role == 'staff') ? 246 : 224, // Increased height to match container
+                          height: (userState.role == 'owner' ||
+                                  userState.role == 'staff')
+                              ? 246
+                              : 224, // Increased height to match container
                           decoration: BoxDecoration(
                             color: theme.primaryBackground,
                             borderRadius: BorderRadius.circular(10),
@@ -379,86 +385,92 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                       Positioned(
                         left: 0,
                         top: 140, // Adjusted top position for added padding
-                        child: Container(
-                          width: containerWidth,
-                          height: (userState.role == 'owner' ||
-                                  userState.role == 'staff')
-                              ? 106
-                              : 84, // Adjusted top position for added padding
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 2, horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: theme.primaryBackground,
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(10),
-                              bottomRight: Radius.circular(10),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: containerWidth,
+                              height: (userState.role == 'owner' ||
+                                      userState.role == 'staff')
+                                  ? 106
+                                  : 84, // Adjusted top position for added padding
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 2, horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: theme.primaryBackground,
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(10),
+                                  bottomRight: Radius.circular(10),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    product['productName'],
+                                    style: theme.bodyLarge.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '\$ ${product['price']}',
+                                    style: theme.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.primary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  if (userState.role == 'owner' ||
+                                      userState.role == 'staff')
+                                    Text(
+                                      'Quantity: ${product['quantity']}',
+                                      style: theme.bodySmall.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.secondaryText,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product['productName'],
-                                style: theme.bodyLarge.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '\$ ${product['price']}',
-                                style: theme.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: theme.primary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (userState.role == 'owner' ||
-                                  userState.role == 'staff')
-                                Text(
-                                  'Quantity: ${product['quantity']}',
-                                  style: theme.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                    color: theme.secondaryText,
-                                    fontSize: 12,
+                            // Edit button for owner or staff
+                            if (userState.role == 'owner' ||
+                                userState.role == 'staff')
+                              Positioned(
+                                left: containerWidth - 60,
+                                bottom: -5,
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                      4.0), // Bigger hitbox
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: IconButton(
+                                    icon: SvgPicture.asset(
+                                        'assets/Icons/edit.svg',
+                                        semanticsLabel: 'Edit Logo'),
+                                    onPressed: () async {
+                                      final shouldRefresh =
+                                          await Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              AddProducts(productData: product),
+                                        ),
+                                      );
+
+                                      if (shouldRefresh == true) {
+                                        setState(() {}); // Reload the page
+                                      }
+                                    },
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
                       ),
-                      // Edit button for owner or staff
-                      if (userState.role == 'owner' ||
-                          userState.role == 'staff')
-                        Positioned(
-                          left: containerWidth - 60,
-                          bottom: -5,
-                          child: Container(
-                            padding: const EdgeInsets.all(4.0), // Bigger hitbox
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: IconButton(
-                              icon: SvgPicture.asset('assets/Icons/edit.svg',
-                                  semanticsLabel: 'Edit Logo'),
-                              onPressed: () async {
-                                final shouldRefresh =
-                                    await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        AddProducts(productData: product),
-                                  ),
-                                );
-
-                                if (shouldRefresh == true) {
-                                  setState(() {}); // Reload the page
-                                }
-                              },
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -552,7 +564,8 @@ class Frame313659 extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFFD09A6C) : Colors.transparent,
+                color:
+                    isSelected ? const Color(0xFFD09A6C) : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: const Color(0xFF876A51)),
               ),

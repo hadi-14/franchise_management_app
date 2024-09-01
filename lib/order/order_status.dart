@@ -131,7 +131,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
       decoration: ShapeDecoration(
         image: DecorationImage(
           image: NetworkImage(imageUrl),
-          fit: BoxFit.fill,
+          fit: BoxFit.fitHeight,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
@@ -195,149 +195,152 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
 
         final address = snapshot.data!;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Order Id : ${order['OrderID']}',
-              style: const TextStyle(
-                color: Color(0xFF353934),
-                fontSize: 16,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 7),
-            Container(
-              width: screenWidth * 0.9,
-              padding: EdgeInsets.all(screenWidth * 0.03),
-              decoration: ShapeDecoration(
-                color: const Color(0xFFFAFAFA),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Order Id : ${order['OrderID']}',
+                style: const TextStyle(
+                  color: Color(0xFF353934),
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
                 ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x0A000000),
-                    blurRadius: 15,
-                    offset: Offset(0, 10),
-                    spreadRadius: 0,
-                  ),
-                ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children:
-                        List.generate(order['productImages'].length, (index) {
-                      return _buildImagePlaceholder(
-                          order['productImages'][index]);
-                    }),
+              const SizedBox(height: 7),
+              Container(
+                width: screenWidth * 0.9,
+                padding: EdgeInsets.all(screenWidth * 0.03),
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFFAFAFA),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Franchise Code: ${order['StoreID']}",
-                    style: const TextStyle(
-                      color: Color(0xFF353934),
-                      fontSize: 14,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
+                  shadows: const [
+                    BoxShadow(
+                      color: Color(0x0A000000),
+                      blurRadius: 15,
+                      offset: Offset(0, 10),
+                      spreadRadius: 0,
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'State',
-                        style: TextStyle(
-                          color: Color(0xFF8E918D),
-                          fontSize: 12,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      _buildStatusChip(
-                        order['State'],
-                        _getStatusColor(order['State']),
-                        _getStatusTextColor(order['State']),
-                        _getStatusBorderColor(order['State']),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Subtotal',
-                        style: TextStyle(
-                          color: Color(0xFF8E918D),
-                          fontSize: 12,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '\$${order['NetTotal']}',
-                        style: const TextStyle(
-                          color: Color(0xFF353934),
-                          fontSize: 12,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}',
-                    style: const TextStyle(
-                      color: Color(0xFF8E918D),
-                      fontSize: 12,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children:
+                          List.generate(order['productImages'].length, (index) {
+                        return _buildImagePlaceholder(
+                            order['productImages'][index]);
+                      }),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () async {
-                      final shouldRefresh = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => OrderDetails(
-                            orderId: order['OrderID'].toString(),
-                          ),
-                        ),
-                      );
-                      if (shouldRefresh == true) {
-                        setState(() {}); // Reload the page
-                      }
-                    },
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    const SizedBox(height: 10),
+                    Text(
+                      "Franchise Code: ${order['StoreID']}",
+                      style: const TextStyle(
+                        color: Color(0xFF353934),
+                        fontSize: 14,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'More Details',
+                        const Text(
+                          'State',
                           style: TextStyle(
-                            color: Color(0xFFD09A6C),
-                            fontSize: 14,
+                            color: Color(0xFF8E918D),
+                            fontSize: 12,
                             fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Icon(
-                          Icons.arrow_right,
-                          color: Color(0xFFD09A6C),
-                        )
+                        _buildStatusChip(
+                          order['State'],
+                          _getStatusColor(order['State']),
+                          _getStatusTextColor(order['State']),
+                          _getStatusBorderColor(order['State']),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Subtotal',
+                          style: TextStyle(
+                            color: Color(0xFF8E918D),
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '\$${order['NetTotal']}',
+                          style: const TextStyle(
+                            color: Color(0xFF353934),
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${address['street']}, ${address['city']}, ${address['state']}, ${address['country']}, ${address['zip']}',
+                      style: const TextStyle(
+                        color: Color(0xFF8E918D),
+                        fontSize: 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final shouldRefresh = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => OrderDetails(
+                              orderId: order['OrderID'].toString(),
+                            ),
+                          ),
+                        );
+                        if (shouldRefresh == true) {
+                          setState(() {}); // Reload the page
+                        }
+                      },
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            'More Details',
+                            style: TextStyle(
+                              color: Color(0xFFD09A6C),
+                              fontSize: 14,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_right,
+                            color: Color(0xFFD09A6C),
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

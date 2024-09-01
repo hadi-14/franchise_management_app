@@ -274,6 +274,7 @@ class CheckoutCart extends StatelessWidget {
       'items': cartItems.map((item) {
         return {
           'Category': item['categoryID'],
+          'Product': item['productID'],
           'productName': item['productName'],
           'Quantity': item['quantity'],
           'Total': item['quantity'] * item['price'],

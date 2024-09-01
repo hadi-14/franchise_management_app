@@ -177,6 +177,8 @@ class OrderDetails extends StatelessWidget {
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w400,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis, // Prevent overflow
         ),
       ),
     );
@@ -232,8 +234,8 @@ class OrderDetails extends StatelessWidget {
                 final productName = snapshot.data!;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 10), // Added internal padding
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border:
@@ -246,13 +248,17 @@ class OrderDetails extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            productName,
-                            style: const TextStyle(
-                              color: Color(0xFF353934),
-                              fontSize: 16,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Text(
+                              productName,
+                              style: const TextStyle(
+                                color: Color(0xFF353934),
+                                fontSize: 16,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis, // Prevent overflow
                             ),
                           ),
                           Text(
@@ -271,7 +277,7 @@ class OrderDetails extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            product['isBox'] ? 'Box' : 'Piece',
+                            product['isBox'] ? 'Box' : 'Item',
                             style: const TextStyle(
                               color: Color(0xFF552E05),
                               fontSize: 12,
@@ -280,7 +286,7 @@ class OrderDetails extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${product['Quantity']} ${product['isBox'] ? 'Box(es)' : 'Piece(s)'}',
+                            '${product['Quantity']} ${product['isBox'] ? 'Box(es)' : 'Item(s)'}',
                             style: const TextStyle(
                               color: Color(0xFF8E918D),
                               fontSize: 12,

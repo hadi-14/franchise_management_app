@@ -39,25 +39,19 @@ class AppState extends ChangeNotifier {
     final productDocRef = FirebaseFirestore.instance
         .collection('product') // Assuming your inventory is in this collection
         .doc(userState.franchiseID)
-        .collection('list');
+        .collection('list')
+        .doc(product['Product']);
+    final data = (await productDocRef.get()).data();
 
     try {
-      // Find the document with the matching product ID and product name
-      final querySnapshot = await productDocRef
-          .where('upcCode', isEqualTo: product['upcCode'])
-          .where('productName', isEqualTo: product['productName'])
-          .limit(1)
-          .get();
-
       print(product);
 
-      if (querySnapshot.docs.isNotEmpty) {
+      if (data !=  null) {
         // If the product exists, update its quantity
-        final docRef = querySnapshot.docs.first.reference;
-        final currentQuantity = querySnapshot.docs.first.data()['quantity'];
+        final currentQuantity = data['quantity'];
         int newQuantity = currentQuantity + quantityToAdd;
 
-        await docRef.update({'quantity': newQuantity});
+        await productDocRef.update({'quantity': newQuantity});
       } else {
         // Log or handle the case where the product was not found (though you mentioned it's guaranteed to be there)
         print("Product not found in inventory.");
