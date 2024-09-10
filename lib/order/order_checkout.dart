@@ -158,7 +158,7 @@ class CheckoutCart extends StatelessWidget {
           InkWell(
             onTap: total > 0
                 ? () async {
-                    await _processOrder(context, userState, cartItems, appState,
+                    await _processPurchase(context, userState, cartItems, appState,
                         tax, serviceFee, total);
                   }
                 : null,
@@ -175,7 +175,7 @@ class CheckoutCart extends StatelessWidget {
               ),
               child: const Center(
                 child: Text(
-                  'Order Now',
+                  'Purchase Now',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -235,7 +235,7 @@ class CheckoutCart extends StatelessWidget {
     );
   }
 
-  Future<void> _processOrder(
+  Future<void> _processPurchase(
       BuildContext context,
       UserState userState,
       List<Map<String, dynamic>> cartItems,
@@ -247,22 +247,22 @@ class CheckoutCart extends StatelessWidget {
     final String franchiseID = userState.franchiseID;
     final String createdBy = userState.userName;
 
-    // Create an order ID (example: incrementing an integer)
+    // Create a purchase ID
     final snapshot = await _firestore
-        .collection('sales')
+        .collection('purchase') // Changed to 'purchase' collection
         .doc(franchiseID)
         .collection('list')
-        .orderBy('OrderID', descending: true)
+        .orderBy('PurchaseID', descending: true)
         .limit(1)
         .get();
 
-    int nextOrderID = snapshot.docs.isNotEmpty
-        ? (snapshot.docs.first.data()['OrderID'] as int) + 1
+    int nextPurchaseID = snapshot.docs.isNotEmpty
+        ? (snapshot.docs.first.data()['PurchaseID'] as int) + 1
         : 1;
 
-    // Create the order data
-    final orderData = {
-      'OrderID': nextOrderID,
+    // Create the purchase data
+    final purchaseData = {
+      'PurchaseID': nextPurchaseID,
       'Date': Timestamp.now(),
       'NetTotal': _calculateSubtotal(cartItems),
       'Tax': tax,
@@ -285,20 +285,20 @@ class CheckoutCart extends StatelessWidget {
       }).toList(),
     };
 
-    // Save the order data to Firestore
+    // Save the purchase data to Firestore
     await _firestore
-        .collection('sales')
+        .collection('purchase') // Save to 'purchase' instead of 'sales'
         .doc(franchiseID)
         .collection('list')
-        .add(orderData);
+        .add(purchaseData);
 
-    // Clear the cart after saving the order
+    // Clear the cart after saving the purchase
     appState.clearCart();
 
     // Show confirmation or navigate to another screen
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Order has been placed successfully!'),
+        content: Text('Purchase has been placed successfully!'),
         duration: Duration(seconds: 1),
       ),
     );

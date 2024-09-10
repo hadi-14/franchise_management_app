@@ -24,11 +24,12 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
   bool _isProcessingBarcode = false;
   bool _allowScan = false; // Controls when scanning is allowed
   double _zoomFactor = 0.0;
-  List<Map<String, String>> _scannedProducts = []; // Stores UPC code and product names
+  List<Map<String, String>> _scannedProducts =
+      []; // Stores UPC code and product names
 
   @override
   void initState() {
-    controller.start(); // Ensure the camera preview is always on
+    controller.stop(); // Ensure the camera preview is always on
     super.initState();
   }
 
@@ -48,7 +49,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
       if (querySnapshot.docs.isNotEmpty) {
         final productName = querySnapshot.docs.first['productName'] as String;
         setState(() {
-          _scannedProducts.insert(0, {'upcCode': barcode, 'productName': productName});
+          _scannedProducts
+              .insert(0, {'upcCode': barcode, 'productName': productName});
           if (_scannedProducts.length > 5) {
             _scannedProducts = _scannedProducts.sublist(0, 5);
           }
@@ -69,12 +71,14 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
   }
 
   void _onDetect(BarcodeCapture capture) async {
-    if (_isProcessingBarcode || !_allowScan) return; // Prevent re-entry if already processing or not allowed to scan
+    if (_isProcessingBarcode || !_allowScan)
+      return; // Prevent re-entry if already processing or not allowed to scan
     final barcode = capture.barcodes.first.rawValue;
     if (barcode != null) {
       setState(() {
         _isProcessingBarcode = true;
-        _allowScan = false; // Disallow further scanning until button is pressed again
+        _allowScan =
+            false; // Disallow further scanning until button is pressed again
       });
       await _fetchProductName(barcode); // Fetch product name using the barcode
       setState(() {
@@ -95,7 +99,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
       builder: (context) {
         return AlertDialog(
           title: const Text('Product Not Found'),
-          content: const Text('No product found with this UPC code. Would you like to add a new product?'),
+          content: const Text(
+              'No product found with this UPC code. Would you like to add a new product?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -110,7 +115,9 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                   context,
                   MaterialPageRoute(
                     builder: (context) => AddProducts(
-                      productData: {'upcCode': barcode}, // Pass the UPC code to the AddProducts page
+                      productData: {
+                        'upcCode': barcode
+                      }, // Pass the UPC code to the AddProducts page
                     ),
                   ),
                 );
@@ -137,7 +144,10 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
             children: [
               Text(
                 '0%',
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Colors.white),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium!
+                    .copyWith(color: Colors.white),
               ),
               Expanded(
                 child: Slider(
@@ -154,7 +164,10 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
               ),
               Text(
                 '100%',
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Colors.white),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium!
+                    .copyWith(color: Colors.white),
               ),
             ],
           ),
@@ -231,7 +244,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
             // Camera preview with full width
             Container(
               width: size.width,
-              height: size.height * 0.5, // Adjusted height for the camera preview
+              height:
+                  size.height * 0.5, // Adjusted height for the camera preview
               decoration: const BoxDecoration(
                 color: Color(0xFFFAFAFA),
               ),
@@ -245,18 +259,18 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                       decoration: ShapeDecoration(
                         color: Colors.white,
                         shape: RoundedRectangleBorder(
-                          side: const BorderSide(width: 1, color: Color(0xFFE0E0E0)),
+                          side: const BorderSide(
+                              width: 1, color: Color(0xFFE0E0E0)),
                           borderRadius: BorderRadius.circular(24),
                         ),
                       ),
                       child: MobileScanner(
-                        controller: controller,
-                        fit: BoxFit.contain,
-                        onDetect: _onDetect,
-                        errorBuilder: (context, error, child) {
-                          return ScannerErrorWidget(error: error);
-                        },
-                      ),
+                          controller: controller,
+                          fit: BoxFit.contain,
+                          onDetect: _onDetect,
+                          errorBuilder: (context, error, child) {
+                            return ScannerErrorWidget(error: error);
+                          }),
                     ),
                   ),
                 ],
@@ -292,7 +306,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                       ),
                     ),
                     Expanded(
-                      child: _buildScannedProductsList(), // Display scanned products list
+                      child:
+                          _buildScannedProductsList(), // Display scanned products list
                     ),
                   ],
                 ),
@@ -322,7 +337,8 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.flip_camera_ios, color: Color(0xFFD09A6C)),
+                        icon: const Icon(Icons.flip_camera_ios,
+                            color: Color(0xFFD09A6C)),
                         onPressed: () {
                           controller.switchCamera();
                         },
@@ -335,12 +351,15 @@ class _BarcodeScannerWithZoomState extends State<BarcodeScannerWithZoom>
                           shape: CircleBorder(),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.white),
-                          onPressed: _enableScan, // Allow scanning when camera button is pressed
+                          icon:
+                              const Icon(Icons.camera_alt, color: Colors.white),
+                          onPressed:
+                              _enableScan, // Allow scanning when camera button is pressed
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.flash_on, color: Color(0xFFD09A6C)),
+                        icon: const Icon(Icons.flash_on,
+                            color: Color(0xFFD09A6C)),
                         onPressed: () {
                           controller.toggleTorch();
                         },

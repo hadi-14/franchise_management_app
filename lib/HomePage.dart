@@ -173,15 +173,14 @@ class _HomePageState extends State<HomePage>
       return [
         [
           OrderNowFranchisePage(franchiseID: userState.franchiseID),
-          OrderHistoryPage(),
+          CheckoutCart(tabController: tabController),
           const BarcodeScannerWithZoom(),
           const OrderStatusPage(),
           const UserSetting()
         ],
         [
           _buildTabIcon("assets/Icons/Navigation bar/shop.png", 0, theme),
-          _buildTabIcon(
-              "assets/Icons/Navigation bar/order-history.png", 1, theme),
+          _buildTabIcon("assets/Icons/Navigation bar/order-history.png", 1, theme),
           const SizedBox(width: 40), // Empty space for the FAB in the center
           _buildTabIcon("assets/Icons/Navigation bar/box-open.png", 3, theme),
           _buildTabIcon("assets/Icons/Navigation bar/settings.png", 4, theme),
@@ -197,8 +196,7 @@ class _HomePageState extends State<HomePage>
         ],
         [
           _buildTabIcon("assets/Icons/Navigation bar/shop.png", 0, theme),
-          _buildTabIcon(
-              "assets/Icons/Navigation bar/order-history.png", 1, theme),
+          _buildTabIcon("assets/Icons/Navigation bar/order-history.png", 1, theme),
           _buildTabIcon("assets/Icons/Navigation bar/box-open.png", 2, theme),
           _buildTabIcon("assets/Icons/Navigation bar/settings.png", 3, theme),
         ]

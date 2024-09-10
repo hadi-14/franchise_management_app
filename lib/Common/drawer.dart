@@ -7,7 +7,6 @@ import '../Common/user_state.dart';
 class DrawerWidget extends StatelessWidget {
   DrawerWidget({super.key});
 
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
@@ -16,7 +15,6 @@ class DrawerWidget extends StatelessWidget {
     final theme = FlutterFlowTheme.of(context);
 
     Future<void> _signOut() async {
-      
       await _auth.signOut();
       Navigator.pushReplacementNamed(context, '/login');
     }
@@ -94,12 +92,31 @@ class DrawerWidget extends StatelessWidget {
                     '/order-history',
                   ),
                   const SizedBox(height: 20),
-                  // _buildDrawerMenuItem(
-                  //   context,
-                  //   'Franchises',
-                  //   "assets/Icons/franchises.png",
-                  //   '/franchises',
-                  // ),
+
+                  // If the user is an owner or staff, show additional options
+                  if (userState.role == 'owner' || userState.role == 'staff') ...[
+                    _buildDrawerMenuItem(
+                      context,
+                      'Purchase Orders',
+                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      '/purchase-orders', // Add route for purchase orders
+                    ),
+                    const SizedBox(height: 20),
+                    _buildDrawerMenuItem(
+                      context,
+                      'Suppliers',
+                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      '/suppliers', // Add route for purchase orders
+                    ),
+                    const SizedBox(height: 20),
+                    _buildDrawerMenuItem(
+                      context,
+                      'Users',
+                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      '/users', // Add route for purchase orders
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
             ),

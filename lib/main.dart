@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:franchise_management_app/suppliers/suppliers_all.dart';
+import 'package:franchise_management_app/users/users.dart';
 import 'package:provider/provider.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -12,6 +14,7 @@ import 'auth/complete_profile.dart';
 import 'Common/flutter_flow_theme.dart';
 import 'Common/user_state.dart';
 import 'HomePage.dart';
+import 'purchase/purchase_order.dart';
 import 'auth/landing_page.dart';
 import 'order/order_history.dart';
 import 'firebase_options.dart';
@@ -49,7 +52,7 @@ class MyApp extends StatelessWidget {
         DeviceOrientation.portraitDown,
       ]);
 
- SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+ SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
  ));
 
@@ -64,10 +67,13 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const AuthHandler(),
         '/login': (context) => const LandingPage(),
-        '/UserSetting': (context) => UserSetting(),
+        '/UserSetting': (context) => const UserSetting(),
         '/homePage': (context) => const HomePage(),
         '/order-history': (context) => const OrderHistoryPage(),
+        '/suppliers': (context) => const SuppliersPage(),
+        '/purchase-orders': (context) => const PurchaseOrders(),
         '/franchises': (context) => const OrderHistoryPage(),
+        '/users': (context) => const FranchiseAndStaffEntry(),
       },
     );
   }

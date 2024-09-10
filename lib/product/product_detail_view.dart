@@ -9,8 +9,7 @@ import '../Common/user_state.dart';
 class ProductDetailsPage extends StatefulWidget {
   final Map<String, dynamic> product;
 
-  const ProductDetailsPage(
-      {super.key, required this.product});
+  const ProductDetailsPage({super.key, required this.product});
 
   @override
   _ProductDetailsPageState createState() => _ProductDetailsPageState();
@@ -37,8 +36,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     } catch (e) {
       print("Error loading image from Firebase: $e");
       setState(() {
-        _imageUrl =
-            "https://via.placeholder.com/150"; // Fallback placeholder image
+        _imageUrl = "https://via.placeholder.com/150"; // Fallback placeholder image
       });
     }
   }
@@ -51,8 +49,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
     final bool isPieceAvailable = widget.product['type']['piece'] ?? false;
     final bool isBoxAvailable = widget.product['type']['box'] ?? false;
-    final bool canAddToInventory = (_pieceQuantity > 0 && isPieceAvailable) ||
-        (_boxQuantity > 0 && isBoxAvailable);
 
     return Scaffold(
       appBar: AppBar(
@@ -81,8 +77,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                       height: 171,
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: NetworkImage(
-                              _imageUrl ?? widget.product['image']),
+                          image: NetworkImage(_imageUrl ?? widget.product['image']),
                           fit: BoxFit.fitWidth,
                           onError: (_, __) {
                             _loadImageFromFirebase(); // Attempt to load image from Firebase if NetworkImage fails
@@ -117,19 +112,17 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               ),
             ),
           ),
-          _buildBottomSection(context, appState, isPieceAvailable,
-              isBoxAvailable, userState.role == 'owner' || userState.role == 'staff'),
+          _buildBottomSection(context, appState, isPieceAvailable, isBoxAvailable),
         ],
       ),
     );
   }
 
   Widget _buildBottomSection(BuildContext context, AppState appState,
-      bool isPieceAvailable, bool isBoxAvailable, bool isOwner) {
+      bool isPieceAvailable, bool isBoxAvailable) {
     final theme = FlutterFlowTheme.of(context);
-    final bool canAddToCartOrInventory =
-        (_pieceQuantity > 0 && isPieceAvailable) ||
-            (_boxQuantity > 0 && isBoxAvailable);
+    final bool canAddToCart = (_pieceQuantity > 0 && isPieceAvailable) ||
+        (_boxQuantity > 0 && isBoxAvailable);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -175,22 +168,19 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               width: MediaQuery.of(context).size.width - 40,
               height: 56,
               decoration: ShapeDecoration(
-                color: canAddToCartOrInventory
-                    ? const Color(0xFFD09A6C)
-                    : Colors.grey,
+                color: canAddToCart ? const Color(0xFFD09A6C) : Colors.grey,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: TextButton(
-                onPressed: canAddToCartOrInventory
+                onPressed: canAddToCart
                     ? () {
                         if (isPieceAvailable && _pieceQuantity > 0) {
                           final pieceProduct = {
                             'productID': widget.product['ID'],
                             'categoryID': widget.product['categoryID'],
-                            'productName':
-                                widget.product['productName'] + " (Item)",
+                            'productName': widget.product['productName'] + " (Item)",
                             'image': widget.product['image'],
                             'price': widget.product['price'],
                             'quantity': _pieceQuantity,
@@ -198,20 +188,14 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             'tax': widget.product['tax'],
                             'type': 'Item',
                           };
-                          if (isOwner) {
-                            appState.addToInventory(context,
-                                pieceProduct); // Add to inventory
-                          } else {
-                            appState.addToCart(pieceProduct);
-                          }
+                          appState.addToCart(pieceProduct);
                         }
 
                         if (isBoxAvailable && _boxQuantity > 0) {
                           final boxProduct = {
                             'productID': widget.product['ID'],
                             'categoryID': widget.product['categoryID'],
-                            'productName':
-                                widget.product['productName'] + " (Box)",
+                            'productName': widget.product['productName'] + " (Box)",
                             'image': widget.product['image'],
                             'price': widget.product['price'] * widget.product['itemsInBox'],
                             'quantity': _boxQuantity,
@@ -219,12 +203,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             'tax': widget.product['tax'],
                             'type': 'Box',
                           };
-                          if (isOwner) {
-                            appState
-                                .addToInventory(context,boxProduct); // Add to inventory
-                          } else {
-                            appState.addToCart(boxProduct);
-                          }
+                          appState.addToCart(boxProduct);
                         }
 
                         Navigator.of(context).pop();
@@ -232,7 +211,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     : null,
                 child: Center(
                   child: Text(
-                    isOwner ? 'Add To Inventory' : 'Add To Cart',
+                    'Add To Cart',
                     style: theme.displaySmall.copyWith(
                       color: Colors.white,
                       fontSize: 16,
