@@ -88,7 +88,7 @@ class DrawerWidget extends StatelessWidget {
                   _buildDrawerMenuItem(
                     context,
                     'Order History',
-                    "assets/Icons/order-history.png",
+                    "assets/Icons/side-bar/order-history.png",
                     '/order-history',
                   ),
                   const SizedBox(height: 20),
@@ -98,21 +98,21 @@ class DrawerWidget extends StatelessWidget {
                     _buildDrawerMenuItem(
                       context,
                       'Purchase Orders',
-                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      "assets/Icons/side-bar/purchase-order.png",
                       '/purchase-orders', // Add route for purchase orders
                     ),
                     const SizedBox(height: 20),
                     _buildDrawerMenuItem(
                       context,
                       'Suppliers',
-                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      "assets/Icons/side-bar/supplier.png",
                       '/suppliers', // Add route for purchase orders
                     ),
                     const SizedBox(height: 20),
                     _buildDrawerMenuItem(
                       context,
                       'Users',
-                      "assets/Icons/Navigation bar/order-history-unactive.png",
+                      'assets/Icons/side-bar/user.png',
                       '/users', // Add route for purchase orders
                     ),
                     const SizedBox(height: 20),

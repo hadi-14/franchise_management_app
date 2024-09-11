@@ -257,110 +257,75 @@ class _CheckoutCartState extends State<CheckoutCart> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildButtonsForCheckout(BuildContext context, UserState userState,
-      List<Map<String, dynamic>> cartItems, AppState appState, double total, double tax, double serviceFee) {
-    if (userState.role == 'admin' || userState.role == 'staff') {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          InkWell(
-            onTap: total > 0
-                ? () async {
-                    await _processOrder(context, userState, cartItems, appState,
-                        tax, serviceFee, total);
-                  }
-                : null,
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.4,
-              height: 56,
-              decoration: ShapeDecoration(
-                color: total > 0
-                    ? const Color(0xFF552E05)
-                    : Colors.grey,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Center(
-                child: Text(
-                  'Order Now',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+Widget _buildButtonsForCheckout(BuildContext context, UserState userState,
+    List<Map<String, dynamic>> cartItems, AppState appState, double total, double tax, double serviceFee) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      Expanded(
+        child: InkWell(
+          onTap: total > 0
+              ? () async {
+                  await _processOrder(context, userState, cartItems, appState,
+                      tax, serviceFee, total);
+                }
+              : null,
+          child: Container(
+            height: 56,
+            decoration: ShapeDecoration(
+              color: total > 0 ? const Color(0xFF552E05) : Colors.grey,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
-          ),
-          InkWell(
-            onTap: total > 0
-                ? () async {
-                    await _processPurchase(context, userState, cartItems, appState,
-                        tax, serviceFee, total);
-                  }
-                : null,
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.4,
-              height: 56,
-              decoration: ShapeDecoration(
-                color: total > 0
-                    ? const Color(0xFFD09A6C)
-                    : Colors.grey,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            child: const Center(
+              child: Text(
+                'Order Now',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              child: const Center(
-                child: Text(
-                  'Purchase Now',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    } else {
-      return InkWell(
-        onTap: total > 0
-            ? () async {
-                await _processPurchase(context, userState, cartItems, appState,
-                    tax, serviceFee, total);
-              }
-            : null,
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.8,
-          height: 56,
-          decoration: ShapeDecoration(
-            color: total > 0
-                ? const Color(0xFFD09A6C)
-                : Colors.grey,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: const Center(
-            child: Text(
-              'Purchase Now',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ),
-      );
-    }
-  }
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: InkWell(
+          onTap: total > 0
+              ? () async {
+                  await _processPurchase(context, userState, cartItems, appState,
+                      tax, serviceFee, total);
+                }
+              : null,
+          child: Container(
+            height: 56,
+            decoration: ShapeDecoration(
+              color: total > 0 ? const Color(0xFFD09A6C) : Colors.grey,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'Purchase Now',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
   double _calculateSubtotal(List<Map<String, dynamic>> cartItems) {
     return cartItems.fold(

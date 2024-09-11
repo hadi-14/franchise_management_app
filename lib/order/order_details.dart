@@ -158,7 +158,7 @@ class OrderDetails extends StatelessWidget {
                         _buildTotalAmountRow(
                             context, screenWidth, orderData),
                         const SizedBox(height: 10),
-                        _buildBottomButtons(context, userState, orderId),
+                        _buildBottomButtons(orderData, userState, orderId, context),
                       ],
                     ),
                   ),
@@ -363,58 +363,99 @@ class OrderDetails extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomButtons(
-      BuildContext context, UserState userState, String orderId) {
+   Widget _buildBottomButtons(Map<String, dynamic> orderData,
+      UserState userState, String state, BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () {
-              // Call Cancel Order function
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFFE2E4E9)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+        if (state == 'Pending') ...[
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {
+                _updateOrderState(orderData, userState, 'Cancelled', context);
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFE2E4E9)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Color(0xFFD09A6C),
-                fontSize: 16,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              // Call Approve Order function
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD09A6C),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text(
-              'Approve',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Color(0xFFD09A6C),
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-        ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                _updateOrderState(orderData, userState, 'Approved', context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD09A6C),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Approve',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ] else ...[
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                final nextState = _getNextState(state);
+                _updateOrderState(orderData, userState, nextState, context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD09A6C),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: Text(
+                'Mark as ${_getNextState(state)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ]
       ],
     );
   }
+
+    String _getNextState(String currentState) {
+    switch (currentState) {
+      case 'Pending':
+        return 'Packed';
+      case 'Packed':
+        return 'Shipped';
+      case 'Shipped':
+        return 'Delivered';
+      default:
+        return 'Completed';
+    }
+  }
+
 }

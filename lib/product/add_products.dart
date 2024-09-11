@@ -32,14 +32,17 @@ class _AddProductsState extends State<AddProducts> {
   File? _selectedImage;
   String? _imageUrl;
   String? selectedCategory;
+  String? selectedSupplier;
   String? productId; // Hold the product ID for editing
 
   List<DropdownMenuItem<String>> _categoryDropdownItems = [];
+  List<DropdownMenuItem<String>> _supplierDropdownItems = [];
 
   @override
   void initState() {
     super.initState();
     _fetchCategories();
+    _fetchSuppliers();
 
     // If productData is provided, populate the fields
     if (widget.productData != null) {
@@ -58,6 +61,7 @@ class _AddProductsState extends State<AddProducts> {
         isBoxSelected = widget.productData!['type']['box'] ?? false;
       }
       selectedCategory = widget.productData!['categoryID'] ?? null;
+      selectedSupplier = widget.productData!['supplier'] ?? null;
       _imageUrl = widget.productData!['image'] ?? null;
       productId = widget.productData!['ID']; // Set the product ID for updating
     }
@@ -76,6 +80,27 @@ class _AddProductsState extends State<AddProducts> {
 
       setState(() {
         _categoryDropdownItems = categoriesSnapshot.docs
+            .map((doc) => DropdownMenuItem<String>(
+                  value: doc.id,
+                  child: Text(doc.data()['name']),
+                ))
+            .toList();
+      });
+    }
+  }
+
+  Future<void> _fetchSuppliers() async {
+    final userState = Provider.of<UserState>(context, listen: false);
+    final franchiseID = userState.franchiseID;
+
+    if (franchiseID.isNotEmpty) {
+      final suppliersSnapshot = await _firestore
+          .collection('suppliers')
+          .where('companyID', isEqualTo: franchiseID)
+          .get();
+
+      setState(() {
+        _supplierDropdownItems = suppliersSnapshot.docs
             .map((doc) => DropdownMenuItem<String>(
                   value: doc.id,
                   child: Text(doc.data()['name']),
@@ -127,6 +152,7 @@ class _AddProductsState extends State<AddProducts> {
         _skuController.text.isEmpty ||
         _totalAmountController.text.isEmpty ||
         selectedCategory == null ||
+        selectedSupplier == null ||
         (_selectedImage == null && _imageUrl == null)) {
       // Show a snackbar to notify the user that all fields must be filled
       ScaffoldMessenger.of(context).showSnackBar(
@@ -148,6 +174,7 @@ class _AddProductsState extends State<AddProducts> {
     if (_imageUrl != null) {
       final productData = {
         'categoryID': selectedCategory,
+        'supplier': selectedSupplier,
         'desc': _productDescController.text,
         'image': _imageUrl,
         'price': double.tryParse(_totalAmountController.text) ?? 0.0,
@@ -193,29 +220,8 @@ class _AddProductsState extends State<AddProducts> {
         );
       }
 
-      // Reset the form after submission
-      // _resetForm();
-
       Navigator.of(context).pop();
     }
-  }
-
-  void _resetForm() {
-    _productNameController.clear();
-    _productDescController.clear();
-    _skuController.clear();
-    _totalAmountController.clear();
-    _taxController.clear();
-    _quantityController.clear();
-    _itemsInBoxController.clear();
-    setState(() {
-      isPieceSelected = false;
-      isBoxSelected = false;
-      selectedCategory = null;
-      _selectedImage = null;
-      _imageUrl = null;
-      productId = null;
-    });
   }
 
   @override
@@ -308,6 +314,19 @@ class _AddProductsState extends State<AddProducts> {
                   });
                 },
                 value: selectedCategory,
+              ),
+              SizedBox(height: screenHeight * 0.02),
+              _buildDropdownField(
+                label: 'Supplier',
+                hint: 'Select supplier',
+                theme: theme,
+                items: _supplierDropdownItems,
+                onChanged: (value) {
+                  setState(() {
+                    selectedSupplier = value;
+                  });
+                },
+                value: selectedSupplier,
               ),
               SizedBox(height: screenHeight * 0.02),
               _buildTypeSelection(theme),
