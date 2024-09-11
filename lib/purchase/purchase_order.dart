@@ -55,9 +55,9 @@ class _PurchaseOrdersState extends State<PurchaseOrders> {
       Map<String, dynamic> orderData = doc.data() as Map<String, dynamic>;
       List<String> productImages = [];
 
+      // Limit to 3 items for product images
       List<dynamic> items = orderData['items'] ?? [];
       for (var item in items.take(3)) {
-        // Limit to 3 items
         final productID = item['Product'];
         final productSnapshot = await _firestore
             .collection('product')
@@ -72,6 +72,21 @@ class _PurchaseOrdersState extends State<PurchaseOrders> {
       }
 
       orderData['productImages'] = productImages;
+
+      // Fetch supplier details if available
+      if (orderData.containsKey('supplierID')) {
+        final supplierSnapshot = await _firestore
+            .collection('suppliers')
+            .doc(orderData['supplierID'])
+            .get();
+        if (supplierSnapshot.exists) {
+          orderData['supplierName'] =
+              supplierSnapshot.data()?['name'] ?? 'Unknown Supplier';
+        } else {
+          orderData['supplierName'] = 'Unknown Supplier';
+        }
+      }
+
       ordersWithImages.add(orderData);
     }
 
@@ -163,326 +178,152 @@ class _PurchaseOrdersState extends State<PurchaseOrders> {
     );
   }
 
-  Future<Map<String, dynamic>> _fetchFranchiseAddress(
-      String franchiseID) async {
-    final snapshot = await _firestore
-        .collection('user')
-        .where('franchiseInternalID', isEqualTo: franchiseID)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      return snapshot.docs.first.data()['Address'] ?? {};
-    } else {
-      return {};
-    }
-  }
-
   Widget _buildOwnerOrStaffCard(
       BuildContext context, Map<String, dynamic> order) {
     final double screenWidth = MediaQuery.of(context).size.width;
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchFranchiseAddress(order['StoreID']),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Container(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Order Id : ${order['OrderID']}',
+            style: const TextStyle(
+              color: Color(0xFF353934),
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Container(
             width: screenWidth * 0.9,
             padding: EdgeInsets.all(screenWidth * 0.03),
-            height: 100,
-          );
-        }
-
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No Data Found!'));
-        }
-
-        final address = snapshot.data!;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Order Id : ${order['OrderID']}',
-                style: const TextStyle(
-                  color: Color(0xFF353934),
-                  fontSize: 16,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w500,
-                ),
+            decoration: ShapeDecoration(
+              color: const Color(0xFFFAFAFA),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(height: 7),
-              Container(
-                width: screenWidth * 0.9,
-                padding: EdgeInsets.all(screenWidth * 0.03),
-                decoration: ShapeDecoration(
-                  color: const Color(0xFFFAFAFA),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  shadows: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 15,
-                      offset: Offset(0, 10),
-                      spreadRadius: 0,
-                    ),
-                  ],
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x0A000000),
+                  blurRadius: 15,
+                  offset: Offset(0, 10),
+                  spreadRadius: 0,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(order['productImages'].length,
+                      (index) {
+                    return _buildImagePlaceholder(order['productImages'][index]);
+                  }),
+                ),
+                const SizedBox(height: 10),
+                if (order.containsKey('supplierName'))
+                  Text(
+                    "Supplier: ${order['supplierName']}",
+                    style: const TextStyle(
+                      color: Color(0xFF353934),
+                      fontSize: 14,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children:
-                          List.generate(order['productImages'].length, (index) {
-                        return _buildImagePlaceholder(
-                            order['productImages'][index]);
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Franchise Code: ${order['StoreID']}",
-                      style: const TextStyle(
-                        color: Color(0xFF353934),
-                        fontSize: 14,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'State',
-                          style: TextStyle(
-                            color: Color(0xFF8E918D),
-                            fontSize: 12,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        _buildStatusChip(
-                          order['State'],
-                          _getStatusColor(order['State']),
-                          _getStatusTextColor(order['State']),
-                          _getStatusBorderColor(order['State']),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Subtotal',
-                          style: TextStyle(
-                            color: Color(0xFF8E918D),
-                            fontSize: 12,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          '\$${order['NetTotal']}',
-                          style: const TextStyle(
-                            color: Color(0xFF353934),
-                            fontSize: 12,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '${address['street'] ?? 'N/A'}, ${address['city'] ?? 'N/A'}, ${address['state'] ?? 'N/A'}, ${address['country'] ?? 'N/A'}, ${address['zip'] ?? 'N/A'}',
-                      style: const TextStyle(
+                    const Text(
+                      'State',
+                      style: TextStyle(
                         color: Color(0xFF8E918D),
                         fontSize: 12,
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    InkWell(
-                      onTap: () async {
-                        final shouldRefresh = await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => OrderDetails(
-                              orderId: order['OrderID'].toString(),
-                            ),
-                          ),
-                        );
-                        if (shouldRefresh == true) {
-                          setState(() {}); // Reload the page
-                        }
-                      },
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'More Details',
-                            style: TextStyle(
-                              color: Color(0xFFD09A6C),
-                              fontSize: 14,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_right,
-                            color: Color(0xFFD09A6C),
-                          )
-                        ],
+                    _buildStatusChip(
+                      order['State'],
+                      _getStatusColor(order['State']),
+                      _getStatusTextColor(order['State']),
+                      _getStatusBorderColor(order['State']),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Subtotal',
+                      style: TextStyle(
+                        color: Color(0xFF8E918D),
+                        fontSize: 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '\$${order['NetTotal']}',
+                      style: const TextStyle(
+                        color: Color(0xFF353934),
+                        fontSize: 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order) {
-    final userState = Provider.of<UserState>(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        Text(
-          'Order Id : ${order['OrderID']}',
-          style: const TextStyle(
-            color: Color(0xFF353934),
-            fontSize: 18,
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.only(right: 9, bottom: 6, left: 9),
-          decoration: ShapeDecoration(
-            color: const Color(0xFFFAFAFA),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            shadows: const [
-              BoxShadow(
-                color: Color(0x0A000000),
-                blurRadius: 15,
-                offset: Offset(0, 10),
-                spreadRadius: 0,
-              )
-            ],
-          ),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 60,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children:
-                      List.generate(order['productImages'].length, (index) {
-                    return _buildImagePlaceholder(
-                        order['productImages'][index]);
-                  }),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildStatusChip(
-                    order['State'],
-                    _getStatusColor(order['State']),
-                    _getStatusTextColor(order['State']),
-                    _getStatusBorderColor(order['State']),
-                  ),
-                  if (order['State'] == 'Shipped')
-                    TextButton(
-                      onPressed: () => _showConfirmationDialog(context,
-                          userState.franchiseID, order['OrderID'].toString()),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                              width: 29,
-                              child: Image.asset('assets/Icons/mark.png')),
-                          const Text(
-                            'Mark as Complete',
-                            style: TextStyle(
-                              color: Color(0xFFD09A6C),
-                              fontSize: 10,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    final shouldRefresh = await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => OrderDetails(
+                          orderId: order['OrderID'].toString(),
+                          isPurchaseOrder: true
+                        ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Franchise ID: ${userState.franchiseInternalID}',
-                      style: const TextStyle(
-                        color: Color(0xFF353934),
-                        fontSize: 16,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
+                    );
+                    if (shouldRefresh == true) {
+                      setState(() {}); // Reload the page
+                    }
+                  },
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'More Details',
+                        style: TextStyle(
+                          color: Color(0xFFD09A6C),
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${userState.address['street']}, ${userState.address['city']}, ${userState.address['state']}, ${userState.address['country']}, ${userState.address['zip']}',
-                      style: const TextStyle(
-                        color: Color(0xFF8E918D),
-                        fontSize: 14,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '\$${order['NetTotal']}',
-                    style: const TextStyle(
-                      color: Color(0xFFD09A6C),
-                      fontSize: 16,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                    ),
+                      Icon(
+                        Icons.arrow_right,
+                        color: Color(0xFFD09A6C),
+                      )
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = FlutterFlowTheme.of(context);
     final userState = Provider.of<UserState>(context);
 
     return Scaffold(
@@ -581,10 +422,7 @@ class _PurchaseOrdersState extends State<PurchaseOrders> {
                       final order = data[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: userState.role == 'owner' ||
-                                userState.role == 'staff'
-                            ? _buildOwnerOrStaffCard(context, order)
-                            : _buildOrderCard(context, order),
+                        child: _buildOwnerOrStaffCard(context, order)
                       );
                     },
                   ),

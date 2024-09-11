@@ -6,17 +6,26 @@ import 'Common/user_state.dart';
 
 class AppState extends ChangeNotifier {
   List<Map<String, dynamic>> _cart = [];
-  List<Map<String, dynamic>> _inventory = []; // Define an inventory list
+  List<Map<String, dynamic>> _inventory = []; // Inventory list
+  String? _selectedSupplierID; // Store selected supplier
 
   List<Map<String, dynamic>> get cart => _cart;
-  List<Map<String, dynamic>> get inventory =>
-      _inventory; // Getter for inventory
+  List<Map<String, dynamic>> get inventory => _inventory; // Getter for inventory
+  String? get selectedSupplierID => _selectedSupplierID;
 
-  void addToCart(Map<String, dynamic> product) {
-    // Check if the product is already in the cart
+  // Set the selected supplier
+  void setSelectedSupplier(String supplierID) {
+    _selectedSupplierID = supplierID;
+    notifyListeners();
+  }
+
+  // Add product to cart with supplierID
+  void addToCart(Map<String, dynamic> product, String supplierID) {
+    product['supplierID'] = supplierID; // Add supplier to product
+
     bool productExists = false;
     for (var item in _cart) {
-      if (item['productName'] == product['productName']) {
+      if (item['productName'] == product['productName'] && item['supplierID'] == supplierID) {
         item['quantity'] += product['quantity']; // Update quantity
         productExists = true;
         break;
@@ -26,39 +35,6 @@ class AppState extends ChangeNotifier {
       _cart.add(product);
     }
     notifyListeners();
-  }
-
-  Future<void> addToInventory(
-      BuildContext context, Map<String, dynamic> product) async {
-    final userState = Provider.of<UserState>(context, listen: false);
-
-    // Convert the quantity based on whether it's a box or piece
-    int quantityToAdd = product['quantity'];
-
-    // Get the reference to the product document in Firestore
-    final productDocRef = FirebaseFirestore.instance
-        .collection('product') // Assuming your inventory is in this collection
-        .doc(userState.franchiseID)
-        .collection('list')
-        .doc(product['Product']);
-    final data = (await productDocRef.get()).data();
-
-    try {
-      print(product);
-
-      if (data !=  null) {
-        // If the product exists, update its quantity
-        final currentQuantity = data['quantity'];
-        int newQuantity = currentQuantity + quantityToAdd;
-
-        await productDocRef.update({'quantity': newQuantity});
-      } else {
-        // Log or handle the case where the product was not found (though you mentioned it's guaranteed to be there)
-        print("Product not found in inventory.");
-      }
-    } catch (e) {
-      print("Failed to update inventory: $e");
-    }
   }
 
   void updateProductQuantity(String productID, int quantity) {
@@ -84,5 +60,29 @@ class AppState extends ChangeNotifier {
   void clearInventory() {
     _inventory.clear();
     notifyListeners();
+  }
+
+  // Calculation functions for subtotal, tax, service fee, and total
+  double _calculateSubtotal(List<Map<String, dynamic>> cartItems) {
+    return cartItems.fold(0, (total, item) => total + item['price'] * item['quantity']);
+  }
+
+  double _calculateTax(List<Map<String, dynamic>> cartItems) {
+    return cartItems.fold(0, (total, item) {
+      final taxPercentage = item['tax'] ?? 0.0;
+      return total + (item['price'] * item['quantity'] * taxPercentage / 100);
+    });
+  }
+
+  double _calculateServiceFee(List<Map<String, dynamic>> cartItems) {
+    final subtotal = _calculateSubtotal(cartItems);
+    return subtotal * 0.01; // 1% service fee
+  }
+
+  double _calculateTotal(List<Map<String, dynamic>> cartItems) {
+    final subtotal = _calculateSubtotal(cartItems);
+    final tax = _calculateTax(cartItems);
+    final serviceFee = _calculateServiceFee(cartItems);
+    return subtotal + tax + serviceFee;
   }
 }

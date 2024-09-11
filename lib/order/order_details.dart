@@ -5,15 +5,18 @@ import '../Common/user_state.dart';
 
 class OrderDetails extends StatelessWidget {
   final String orderId;
+  final bool isPurchaseOrder;
 
   const OrderDetails({
     Key? key,
     required this.orderId,
+    this.isPurchaseOrder = false,
   }) : super(key: key);
 
   Future<Map<String, dynamic>> _fetchOrderDetails(UserState userState) async {
+    final collection = isPurchaseOrder ? 'purchase' : 'sales';
     final orderSnapshot = await FirebaseFirestore.instance
-        .collection('sales')
+        .collection(collection)
         .doc(userState.franchiseID)
         .collection('list')
         .where('OrderID', isEqualTo: int.parse(orderId))
@@ -44,8 +47,9 @@ class OrderDetails extends StatelessWidget {
 
   Future<void> _updateOrderState(Map<String, dynamic> orderData,
       UserState userState, String newState, BuildContext context) async {
+    final collection = isPurchaseOrder ? 'purchase' : 'sales';
     final orderSnapshot = await FirebaseFirestore.instance
-        .collection('sales')
+        .collection(collection)
         .doc(userState.franchiseID)
         .collection('list')
         .where('OrderID', isEqualTo: int.parse(orderId))
@@ -54,7 +58,6 @@ class OrderDetails extends StatelessWidget {
     if (orderSnapshot.docs.isNotEmpty) {
       final batch = FirebaseFirestore.instance.batch();
 
-      // Only reduce stock for 'Approved' or 'Shipped' state
       if (newState == 'Approved' || newState == 'Shipped') {
         final List<dynamic> productList = orderData['items'];
 
@@ -71,18 +74,15 @@ class OrderDetails extends StatelessWidget {
             final currentQuantity = productSnapshot.data()?['quantity'] ?? 0;
             final updatedQuantity = currentQuantity - product['Quantity'];
 
-            // Update the product quantity
             batch.update(productRef, {'quantity': updatedQuantity});
           }
         }
       }
 
-      // Update the order state
       batch.update(orderSnapshot.docs.first.reference, {'State': newState});
 
       await batch.commit();
 
-      // Reload the previous page
       Navigator.pop(context, true);
     } else {
       throw Exception('Order not found');
@@ -99,51 +99,72 @@ class OrderDetails extends StatelessWidget {
         title: const Text('Order Details'),
         centerTitle: true,
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchOrderDetails(userState),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData) {
-            return const Center(child: Text('Order not found'));
-          }
-
-          final orderData = snapshot.data!;
-          final String state = orderData['State'];
-          final List<dynamic> productList = orderData['items'];
-          final double totalAmount = orderData['TotalAmount'];
-          final String storeName = orderData['StoreID'];
-
-          return Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailRow('Order ID', orderId, screenWidth),
-                      const SizedBox(height: 15),
-                      _buildDetailRow('State', state, screenWidth),
-                      const SizedBox(height: 15),
-                      _buildProductList(userState, productList, screenWidth),
-                      const SizedBox(height: 15),
-                      _buildDetailRow(
-                          'Total Amount', '\$$totalAmount', screenWidth),
-                      const SizedBox(height: 15),
-                      _buildDetailRow('Store', storeName, screenWidth),
-                    ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return FutureBuilder<Map<String, dynamic>>(
+            future: _fetchOrderDetails(userState),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else if (!snapshot.hasData) {
+                return const Center(child: Text('Order not found'));
+              }
+          
+              final orderData = snapshot.data!;
+              final String state = orderData['State'];
+              final List<dynamic> productList = orderData['items'];
+              final double totalAmount = orderData['TotalAmount'];
+              final String storeName = orderData['StoreID'] ?? '';
+          
+              return Stack(children: [
+                Container(height: MediaQuery.of(context).size.height - 100,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(18.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow('Order ID', orderId, screenWidth),
+                        const SizedBox(height: 15),
+                        _buildDetailRow('State', state, screenWidth),
+                        const SizedBox(height: 15),
+                        _buildProductList(
+                            userState, productList, screenWidth),
+                        const SizedBox(height: 100), // Space for floating bar
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(18.0),
-                child:
-                    _buildBottomButtons(orderData, userState, state, context),
-              ),
-            ],
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        _buildTotalAmountRow(
+                            context, screenWidth, orderData),
+                        const SizedBox(height: 10),
+                        _buildBottomButtons(context, userState, orderId),
+                      ],
+                    ),
+                  ),
+                ),
+              ]);
+            },
           );
         },
       ),
@@ -178,7 +199,7 @@ class OrderDetails extends StatelessWidget {
             fontWeight: FontWeight.w400,
           ),
           maxLines: 1,
-          overflow: TextOverflow.ellipsis, // Prevent overflow
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
@@ -234,8 +255,8 @@ class OrderDetails extends StatelessWidget {
                 final productName = snapshot.data!;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 10), // Added internal padding
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border:
@@ -258,7 +279,7 @@ class OrderDetails extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis, // Prevent overflow
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
@@ -307,98 +328,93 @@ class OrderDetails extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomButtons(Map<String, dynamic> orderData,
-      UserState userState, String state, BuildContext context) {
-    return Row(
-      children: [
-        if (state == 'Pending') ...[
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                _updateOrderState(orderData, userState, 'Cancelled', context);
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFFE2E4E9)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Color(0xFFD09A6C),
-                  fontSize: 16,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+  Widget _buildTotalAmountRow(BuildContext context, double screenWidth,
+      Map<String, dynamic> orderData) {
+    final double totalAmount = double.parse(orderData['TotalAmount'].toStringAsFixed(2));
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD09A6C),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Total Amount',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                _updateOrderState(orderData, userState, 'Approved', context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD09A6C),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text(
-                'Approve',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          Text(
+            '\$$totalAmount',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ] else ...[
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                final nextState = _getNextState(state);
-                _updateOrderState(orderData, userState, nextState, context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD09A6C),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: Text(
-                'Mark as ${_getNextState(state)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ]
-      ],
+        ],
+      ),
     );
   }
 
-  String _getNextState(String currentState) {
-    switch (currentState) {
-      case 'Pending':
-        return 'Packed';
-      case 'Packed':
-        return 'Shipped';
-      case 'Shipped':
-        return 'Delivered';
-      default:
-        return 'Completed';
-    }
+  Widget _buildBottomButtons(
+      BuildContext context, UserState userState, String orderId) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () {
+              // Call Cancel Order function
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFE2E4E9)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: Color(0xFFD09A6C),
+                fontSize: 16,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () {
+              // Call Approve Order function
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD09A6C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text(
+              'Approve',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

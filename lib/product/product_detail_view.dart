@@ -187,8 +187,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             'upcCode': widget.product['upcCode'],
                             'tax': widget.product['tax'],
                             'type': 'Item',
+                            'supplierID': widget.product['supplierID'],  // Include supplier ID here
                           };
-                          appState.addToCart(pieceProduct);
+                          appState.addToCart(pieceProduct, widget.product['supplier']);
                         }
 
                         if (isBoxAvailable && _boxQuantity > 0) {
@@ -202,8 +203,9 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             'upcCode': widget.product['upcCode'],
                             'tax': widget.product['tax'],
                             'type': 'Box',
+                            'supplierID': widget.product['supplierID'],  // Include supplier ID here
                           };
-                          appState.addToCart(boxProduct);
+                          appState.addToCart(boxProduct, widget.product['supplier']);
                         }
 
                         Navigator.of(context).pop();

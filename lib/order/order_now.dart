@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 import '../Common/drawer.dart';
 import '../Common/flutter_flow_theme.dart';
 import '../Common/user_state.dart';
-import '../product/add_products.dart';
-import '../product/product_categories.dart';
-import '../product/product_detail_view.dart';
+import '../AppState.dart';
 import 'package:change_case/change_case.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+import '../product/add_products.dart';
+import '../product/product_detail_view.dart';
 
 class OrderNowFranchisePage extends StatefulWidget {
   final String franchiseID;
@@ -28,7 +29,9 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedCategoryID;
+  String? _selectedSupplierID;
   Map<String, String> _categories = {};
+  Map<String, String> _suppliers = {};
   bool _isExpanded = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -38,6 +41,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
   void initState() {
     super.initState();
     _fetchCategories();
+    _fetchSuppliers();
     _searchController.addListener(() {
       setState(() {}); // Update the UI when the search text changes
     });
@@ -80,6 +84,16 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
     });
   }
 
+  Future<void> _fetchSuppliers() async {
+    final snapshot = await _firestore.collection('suppliers').get();
+
+    setState(() {
+      _suppliers = {
+        for (var doc in snapshot.docs) doc.id: doc['name'] as String,
+      };
+    });
+  }
+
   Future<List<DocumentSnapshot>> _fetchProducts() async {
     Query query = _firestore
         .collection('product')
@@ -101,6 +115,11 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
       query = query.where('categoryID', isEqualTo: _selectedCategoryID);
     }
 
+    // Apply supplier filter
+    if (_selectedSupplierID != null) {
+      query = query.where('supplier', isEqualTo: _selectedSupplierID);
+    }
+
     final snapshot = await query.get();
     return snapshot.docs;
   }
@@ -117,7 +136,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
   @override
   Widget build(BuildContext context) {
     final userState = Provider.of<UserState>(context);
-
+    final appState = Provider.of<AppState>(context);
     final theme = FlutterFlowTheme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -126,48 +145,43 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
       appBar: AppBar(
         title: Row(
           children: [
-            !(userState.role == 'owner' || userState.role == 'staff')
-                ? Container(
-                    width: screenWidth * 0.6,
-                    height: 30,
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                            width: 1, color: Color(0x70D1A784)),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
+            if (!(userState.role == 'owner' || userState.role == 'staff'))
+              Container(
+                width: screenWidth * 0.6,
+                height: 30,
+                decoration: ShapeDecoration(
+                  shape: RoundedRectangleBorder(
+                    side: const BorderSide(width: 1, color: Color(0x70D1A784)),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 7.0, top: 5.0),
+                  child: Text(
+                    'Franchise ID: ${userState.franchiseInternalID}',
+                    style: const TextStyle(
+                      color: Color(0xFF552E05),
+                      fontSize: 12,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 7.0, top: 5.0),
-                      child: Text(
-                        'Franchise ID: ${userState.franchiseInternalID}',
-                        style: const TextStyle(
-                          color: Color(0xFF552E05),
-                          fontSize: 12,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  )
-                : !(userState.role == 'franchisee')
-                    ? SizedBox(
-                        width: screenWidth * 0.6,
-                        height: 30,
-                        child: Center(
-                          child: Text(userState.company ?? '',
-                              style: const TextStyle(
-                                color: Color(0xFF552E05),
-                                fontSize: 18,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w400,
-                              )),
-                        ),
-                      )
-                    : SizedBox(
-                        width: screenWidth * 0.6,
-                        height: 30,
-                      ),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                width: screenWidth * 0.6,
+                height: 30,
+                child: Center(
+                  child: Text(userState.company ?? '',
+                      style: const TextStyle(
+                        color: Color(0xFF552E05),
+                        fontSize: 18,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                      )),
+                ),
+              ),
             SizedBox(width: screenWidth * 0.06),
             SizedBox(
               width: 30,
@@ -177,71 +191,30 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
           ],
         ),
       ),
-      drawer: DrawerWidget(), // Drawer added here
-      body: Stack(
+      drawer: DrawerWidget(),
+      body: Column(
         children: [
-          Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.only(
-                  top: 20.0,
-                  left: screenWidth * 0.05,
-                  right: screenWidth * 0.05,
-                ),
-                child: Container(
-                  width: screenWidth * 0.9,
-                  height: 45,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
-                  decoration: ShapeDecoration(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    shadows: const [
-                      BoxShadow(
-                        color: Color(0x26686868),
-                        blurRadius: 8,
-                        offset: Offset(0, 1),
-                        spreadRadius: 3,
-                      )
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: Icon(Icons.search),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: const InputDecoration(
-                            hintText: 'Search...',
-                            border: InputBorder.none,
-                          ),
-                          style: const TextStyle(
-                            color: Color(0xFF552E05),
-                            fontSize: 12,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_categories.isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: 20.0,
-                    left: screenWidth * 0.05,
-                    right: screenWidth * 0.05,
-                  ),
-                  child: Frame313659(
+          Padding(
+            padding: EdgeInsets.only(
+              top: 20.0,
+              left: screenWidth * 0.05,
+              right: screenWidth * 0.05,
+            ),
+            child: _buildSearchBox(),
+          ),
+          Padding(
+            padding: EdgeInsets.only(
+              top: 10.0,
+              left: screenWidth * 0.05,
+              right: screenWidth * 0.05,
+            ),
+            child: Column(
+              children: [
+                if (userState.role == 'owner' || userState.role == 'staff')
+                  _buildSupplierDropdown(theme, appState), // Supplier Dropdown for owner or staff
+                const SizedBox(height: 10),
+                if (_categories.isNotEmpty)
+                  CategoryFilterWidget(
                     categories: _categories,
                     selectedCategoryID: _selectedCategoryID,
                     onCategorySelected: (String categoryID) {
@@ -250,31 +223,30 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                       });
                     },
                   ),
-                ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: FutureBuilder<List<DocumentSnapshot>>(
-                  future: _fetchProducts(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      print('Error: ${snapshot.error}');
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final data = snapshot.data ?? [];
-                    if (data.isEmpty) {
-                      return const Center(child: Text('No products found.'));
-                    }
-
-                    return _buildCardLayout(data, theme, userState);
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          _buildOverlayOptions(theme),
+          const SizedBox(height: 20),
+          Expanded(
+            child: FutureBuilder<List<DocumentSnapshot>>(
+              future: _fetchProducts(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  print('Error: ${snapshot.error}');
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final data = snapshot.data ?? [];
+                if (data.isEmpty) {
+                  return const Center(child: Text('No products found.'));
+                }
+
+                return _buildCardLayout(data, theme, userState);
+              },
+            ),
+          ),
         ],
       ),
       floatingActionButton:
@@ -283,7 +255,6 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                   padding: const EdgeInsets.only(bottom: 70.0),
                   child: FloatingActionButton(
                     onPressed: () {
-                      // Toggle animation without calling setState
                       if (_isExpanded) {
                         _animationController.reverse();
                       } else {
@@ -296,14 +267,86 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 )
-              : null, // Show FAB only if user is 'owner' or 'staff'
+              : null,
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return Container(
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x26686868),
+            blurRadius: 8,
+            offset: Offset(0, 1),
+            spreadRadius: 3,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Color(0xFF552E05)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search...',
+                border: InputBorder.none,
+              ),
+              style: const TextStyle(
+                color: Color(0xFF552E05),
+                fontSize: 12,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierDropdown(FlutterFlowTheme theme, AppState appState) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFF876A51)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: DropdownButton<String>(
+        value: appState.selectedSupplierID,
+        icon: const Icon(Icons.arrow_downward),
+        iconSize: 24,
+        elevation: 16,
+        isExpanded: true,
+        style: theme.bodyText1.copyWith(color: const Color(0xFF353934)),
+        underline: Container(),
+        onChanged: (String? newValue) {
+          if (newValue != null) {
+            appState.setSelectedSupplier(newValue);
+          }
+        },
+        hint: const Text('Select Supplier'),
+        items: _suppliers.entries
+            .map((entry) => DropdownMenuItem<String>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                ))
+            .toList(),
+      ),
     );
   }
 
   Widget _buildCardLayout(List<DocumentSnapshot> data, FlutterFlowTheme theme,
       UserState userState) {
     double containerWidth = (MediaQuery.of(context).size.width - 60) / 2;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 75.0),
       child: GridView.builder(
@@ -342,10 +385,9 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                   height:
                       (userState.role == 'owner' || userState.role == 'staff')
                           ? 246
-                          : 224, // Increased height to accommodate more content
+                          : 224,
                   child: Stack(
                     children: [
-                      // Card background
                       Positioned(
                         left: 0,
                         top: 0,
@@ -354,7 +396,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                           height: (userState.role == 'owner' ||
                                   userState.role == 'staff')
                               ? 246
-                              : 224, // Increased height to match container
+                              : 224,
                           decoration: BoxDecoration(
                             color: theme.primaryBackground,
                             borderRadius: BorderRadius.circular(10),
@@ -369,7 +411,6 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                           ),
                         ),
                       ),
-                      // Product Image
                       Positioned(
                         left: 0,
                         top: 0,
@@ -381,10 +422,9 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                           fit: BoxFit.contain,
                         ),
                       ),
-                      // Product details and price alignment
                       Positioned(
                         left: 0,
-                        top: 140, // Adjusted top position for added padding
+                        top: 140,
                         child: Stack(
                           children: [
                             Container(
@@ -392,7 +432,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                               height: (userState.role == 'owner' ||
                                       userState.role == 'staff')
                                   ? 106
-                                  : 84, // Adjusted top position for added padding
+                                  : 84,
                               padding: const EdgeInsets.symmetric(
                                   vertical: 2, horizontal: 10),
                               decoration: BoxDecoration(
@@ -436,15 +476,13 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                                 ],
                               ),
                             ),
-                            // Edit button for owner or staff
                             if (userState.role == 'owner' ||
                                 userState.role == 'staff')
                               Positioned(
                                 left: containerWidth - 60,
                                 bottom: -5,
                                 child: Container(
-                                  padding: const EdgeInsets.all(
-                                      4.0), // Bigger hitbox
+                                  padding: const EdgeInsets.all(4.0),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20),
                                   ),
@@ -462,7 +500,7 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
                                       );
 
                                       if (shouldRefresh == true) {
-                                        setState(() {}); // Reload the page
+                                        setState(() {});
                                       }
                                     },
                                   ),
@@ -481,69 +519,14 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
       ),
     );
   }
-
-  Widget _buildOverlayOptions(FlutterFlowTheme theme) {
-    return Positioned(
-      bottom: 160,
-      right: 16,
-      child: FadeTransition(
-        opacity: _opacityAnimation,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FloatingActionButton(
-                heroTag: 'addProduct',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const AddProducts(),
-                    ),
-                  );
-                },
-                backgroundColor: theme.primaryBackground,
-                shape: const CircleBorder(),
-                mini: true,
-                child: Icon(
-                  Icons.add_shopping_cart,
-                  color: theme.secondaryText,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 5),
-              FloatingActionButton(
-                heroTag: 'addCategory',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const CategoryPage(),
-                    ),
-                  );
-                },
-                backgroundColor: theme.primaryBackground,
-                shape: const CircleBorder(),
-                mini: true,
-                child: Icon(
-                  Icons.category,
-                  color: theme.secondaryText,
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-class Frame313659 extends StatelessWidget {
+class CategoryFilterWidget extends StatelessWidget {
   final Map<String, String> categories;
   final String? selectedCategoryID;
   final ValueChanged<String> onCategorySelected;
 
-  const Frame313659({
+  const CategoryFilterWidget({
     required this.categories,
     required this.selectedCategoryID,
     required this.onCategorySelected,
