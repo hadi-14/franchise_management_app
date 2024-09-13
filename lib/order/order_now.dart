@@ -10,6 +10,7 @@ import 'package:change_case/change_case.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../product/add_products.dart';
+import '../product/product_categories.dart';
 import '../product/product_detail_view.dart';
 
 class OrderNowFranchisePage extends StatefulWidget {
@@ -192,61 +193,67 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
         ),
       ),
       drawer: DrawerWidget(),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.only(
-              top: 20.0,
-              left: screenWidth * 0.05,
-              right: screenWidth * 0.05,
-            ),
-            child: _buildSearchBox(),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              top: 10.0,
-              left: screenWidth * 0.05,
-              right: screenWidth * 0.05,
-            ),
-            child: Column(
-              children: [
-                if (userState.role == 'owner' || userState.role == 'staff')
-                  _buildSupplierDropdown(theme, appState), // Supplier Dropdown for owner or staff
-                const SizedBox(height: 10),
-                if (_categories.isNotEmpty)
-                  CategoryFilterWidget(
-                    categories: _categories,
-                    selectedCategoryID: _selectedCategoryID,
-                    onCategorySelected: (String categoryID) {
-                      setState(() {
-                        _selectedCategoryID = categoryID;
-                      });
-                    },
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: FutureBuilder<List<DocumentSnapshot>>(
-              future: _fetchProducts(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  print('Error: ${snapshot.error}');
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final data = snapshot.data ?? [];
-                if (data.isEmpty) {
-                  return const Center(child: Text('No products found.'));
-                }
+          Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  top: 20.0,
+                  left: screenWidth * 0.05,
+                  right: screenWidth * 0.05,
+                ),
+                child: _buildSearchBox(),
+              ),
+              Padding(
+                padding: EdgeInsets.only(
+                  top: 10.0,
+                  left: screenWidth * 0.05,
+                  right: screenWidth * 0.05,
+                ),
+                child: Column(
+                  children: [
+                    if (userState.role == 'owner' || userState.role == 'staff')
+                      _buildSupplierDropdown(theme,
+                          appState), // Supplier Dropdown for owner or staff
+                    const SizedBox(height: 10),
+                    if (_categories.isNotEmpty)
+                      CategoryFilterWidget(
+                        categories: _categories,
+                        selectedCategoryID: _selectedCategoryID,
+                        onCategorySelected: (String categoryID) {
+                          setState(() {
+                            _selectedCategoryID = categoryID;
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: FutureBuilder<List<DocumentSnapshot>>(
+                  future: _fetchProducts(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error: ${snapshot.error}');
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final data = snapshot.data ?? [];
+                    if (data.isEmpty) {
+                      return const Center(child: Text('No products found.'));
+                    }
 
-                return _buildCardLayout(data, theme, userState);
-              },
-            ),
+                    return _buildCardLayout(data, theme, userState);
+                  },
+                ),
+              ),
+            ],
           ),
+          _buildOverlayOptions(theme),
         ],
       ),
       floatingActionButton:
@@ -309,6 +316,61 @@ class _OrderNowFranchisePageState extends State<OrderNowFranchisePage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOverlayOptions(FlutterFlowTheme theme) {
+    return Positioned(
+      bottom: 160,
+      right: 16,
+      child: FadeTransition(
+        opacity: _opacityAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                heroTag: 'addProduct',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AddProducts(),
+                    ),
+                  );
+                },
+                backgroundColor: theme.primaryBackground,
+                shape: const CircleBorder(),
+                mini: true,
+                child: Icon(
+                  Icons.add_shopping_cart,
+                  color: theme.secondaryText,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 5),
+              FloatingActionButton(
+                heroTag: 'addCategory',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const CategoryPage(),
+                    ),
+                  );
+                },
+                backgroundColor: theme.primaryBackground,
+                shape: const CircleBorder(),
+                mini: true,
+                child: Icon(
+                  Icons.category,
+                  color: theme.secondaryText,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
