@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:franchise_management_app/suppliers/suppliers_all.dart';
 import 'package:franchise_management_app/users/users.dart';
 import 'package:provider/provider.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
-import '.env.dart';
 import 'auth/user_setting.dart';
 import 'auth/complete_profile.dart';
 import 'Common/flutter_flow_theme.dart';
@@ -25,11 +22,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  Stripe.publishableKey = stripePublishableKey;
-  Stripe.merchantIdentifier = 'merchant.flutter.stripe.test';
-  Stripe.urlScheme = 'flutterstripe';
-  await Stripe.instance.applySettings();
 
   runApp(
     MultiProvider(

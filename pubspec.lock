@@ -395,14 +395,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.21"
-  flutter_stripe:
-    dependency: "direct main"
-    description:
-      name: flutter_stripe
-      sha256: "28527923373720fcd39eade306f4acc007df8a3f2c0aeea545f1521dec9399c2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "11.0.0"
   flutter_stripe_web:
     dependency: "direct main"
     description:
@@ -938,22 +930,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
-  stripe_android:
-    dependency: transitive
-    description:
-      name: stripe_android
-      sha256: "189b8d5c79dfb363540a77e813ba350c9058559673f3df80a2cb87e0983a316e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "11.0.0"
-  stripe_ios:
-    dependency: transitive
-    description:
-      name: stripe_ios
-      sha256: "680d442b2bb920dd91bec4aba9286de050a76a789e9bc128044f2b3732369be6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "11.0.0"
   stripe_js:
     dependency: transitive
     description:

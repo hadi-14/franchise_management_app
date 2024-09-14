@@ -49,7 +49,6 @@ dependencies:
   path_provider: ^2.1.4
   open_file: ^3.3.2
   file_picker: ^8.0.6
-  flutter_stripe: ^11.0.0
   http: ^1.2.2
   font_awesome_flutter: ^10.7.0
   flutter_stripe_web: ^6.0.0
